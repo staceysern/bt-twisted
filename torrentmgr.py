@@ -52,10 +52,11 @@ class TorrentMgrError(Exception):
     pass
 
 class TorrentMgr(object):
-    def __init__(self, filename, port, peer_id):
+    def __init__(self, filename, port, peer_id, reactor):
         self._filename = filename
         self._port = port
         self._peer_id = peer_id
+        self._reactor = reactor
 
         # _peers is a list of peers that the TorrentMgr is trying 
         # to communicate with
@@ -112,7 +113,6 @@ class TorrentMgr(object):
         # bytes.
         self._partial = []
 
-        self._reactor = Reactor()
         self._reactor.schedule_timer(_TIMER_INTERVAL, self)
         self._tick = 1
 
@@ -126,7 +126,7 @@ class TorrentMgr(object):
         peers = self._tracker_proxy.get_peers(n)
         for p in peers:
             peer = PeerProxy(self, self._peer_id, (p['ip'], p['port']), 
-                             info_hash=self._metainfo.info_hash)
+                             self._reactor, info_hash=self._metainfo.info_hash)
             self._peers.append(peer)
             self._bitfields[peer] = BitArray(self._metainfo.num_pieces)
     

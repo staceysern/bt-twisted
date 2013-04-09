@@ -16,7 +16,7 @@ from reactor import Reactor
 logger = logging.getLogger('bt.acceptor')
 
 class Acceptor(object):
-    def __init__(self, addr, server):
+    def __init__(self, addr, server, reactor):
         self._server = server
 
         self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -25,7 +25,7 @@ class Acceptor(object):
         self._socket.bind(addr)
         self._socket.listen(5)
 
-        Reactor().register_for_read_events(self)
+        reactor.register_for_read_events(self)
 
     def stream(self):
         return self._socket

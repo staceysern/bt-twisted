@@ -19,10 +19,10 @@ from reactor import Reactor
 logger = logging.getLogger('bt.connector')
 
 class Connector(object):
-    def __init__(self, addr, requestor):
+    def __init__(self, addr, requestor, reactor):
         logger.debug("Connect to address {}".format(addr))
         self._requestor = requestor
-        self._reactor = Reactor()
+        self._reactor = reactor 
         self._addr = addr
 
         try:

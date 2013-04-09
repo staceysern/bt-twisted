@@ -24,7 +24,6 @@ from decorators import singleton
 
 logger = logging.getLogger('bt.reactor')
 
-@singleton
 class Reactor(object):
     def __init__(self):
         self._read_handlers = {}

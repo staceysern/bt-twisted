@@ -42,8 +42,10 @@ class PeerProxy(object):
         (Awaiting_Handshake, Awaiting_Connection, Handshake_Initiated, 
          Bitfield_Allowed, Peer_to_Peer, Disconnected) = range(6)
 
-    def __init__(self, client, peer_id, addr, socket=None, info_hash=None):
+    def __init__(self, client, peer_id, addr, reactor, 
+                 socket=None, info_hash=None):
         self._client = client
+        self._reactor = reactor
         self._socket = socket
         self._info_hash = info_hash
         self._peer_id = peer_id
@@ -63,7 +65,7 @@ class PeerProxy(object):
 
             self._translator = None
             self._socketreaderwriter = None
-            Connector(addr, self)        
+            Connector(addr, self, self._reactor)        
 
             self._state = self._States.Awaiting_Connection
         else:
@@ -71,7 +73,8 @@ class PeerProxy(object):
             self._state = self._States.Awaiting_Handshake
 
     def _setup_handshake_translator(self):
-        self._socketreaderwriter = SocketReaderWriter(self._socket)
+        self._socketreaderwriter = SocketReaderWriter(self._socket, 
+                                                      self._reactor)
 
         self._translator = HandshakeTranslator()
         self._translator.set_readerwriter(self._socketreaderwriter)

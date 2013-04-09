@@ -25,8 +25,8 @@ from reactor import Reactor
 logger = logging.getLogger('bt.socketreaderwriter')
 
 class SocketReaderWriter(object):
-    def __init__(self, sock):
-        self._reactor = Reactor()
+    def __init__(self, sock, reactor):
+        self._reactor = reactor
         self._receiver = None
         self._output = []
         self._socket = sock

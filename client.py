@@ -22,6 +22,7 @@ and closed and sockets should be closed ideally.
 
 import logging
 import logging.config
+import sys
 import time
 
 from acceptor import Acceptor
@@ -38,18 +39,21 @@ logger = logging.getLogger('bt')
 
 class BitTorrentClient(object):
     def __init__(self):
+        self._reactor = Reactor()
+
         self._peer_id = "-HS0001-"+str(int(time.time())).zfill(12)
         self._torrents = {}
 
         for self._port in range(_PORT_FIRST,_PORT_LAST+1):
             try:
-                self._acceptor = Acceptor(("localhost", self._port), self)
+                self._acceptor = Acceptor(("localhost", self._port), 
+                                          self, self._reactor)
                 break
             except Exception as e:
                 logger.debug(e)
                 continue
         else:
-            logger.critical(("Could not find free port in range {}-{} to"+
+            logger.critical(("Could not find free port in range {}-{} to "+
                              "accept connections").
                              format(_PORT_FIRST, _PORT_LAST))
             sys.exit(1)
@@ -58,12 +62,13 @@ class BitTorrentClient(object):
 
         print ("Enter the name of one or more torrent files to serve " +
                "(one to a line).")
-        UserInput(self)
-        Reactor().run()
+        UserInput(self, self._reactor)
+
+        self._reactor.run()
 
     def add_torrent(self, filename):
         try:
-            t = TorrentMgr(filename, self._port, self._peer_id)
+            t = TorrentMgr(filename, self._port, self._peer_id, self._reactor)
         except TorrentMgrError as e:
             return
 

@@ -16,14 +16,14 @@ from reactor import Reactor
 logger = logging.getLogger('bt.userinput')
 
 class UserInput(object):
-    def __init__(self, client):
+    def __init__(self, client, reactor):
         self._client = client
 
         fd = sys.stdin.fileno()
         fl = fcntl.fcntl(fd, fcntl.F_GETFL)
         fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
 
-        Reactor().register_for_read_events(self)
+        reactor.register_for_read_events(self)
 
     def stream(self):
         return sys.stdin
@@ -31,5 +31,3 @@ class UserInput(object):
     def read_event(self):
         filename = sys.stdin.read()
         self._client.add_torrent(filename[:-1])
-         
-    
