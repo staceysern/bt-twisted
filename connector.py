@@ -1,17 +1,13 @@
 """
-The Connector is a singleton object which establishes tcp connections.  Each 
-time a requestor makes a connect request for an ip address, the Connector 
-creates a ConnectHandler to handle the connection establishment and report back 
-to the requestor.  The ConnectHandler creates a non-blocking socket and tries to
-connect on it.  It registers with the Reactor to be notified for write events on
-the socket so that it can determine whether the connect succeeds or fails.
+The Connector establishes tcp connections.  Each Connector is created with an
+address to connect to and a reference to a requestor to notify about the
+result of the connection establishment.  The Connector creates a 
+non-blocking socket and tries to connect on it.  It registers with the Reactor 
+to be notified for write events on the socket so that it can determine whether 
+the connect succeeds or fails.
 
 A requestor must implement two functions, connection_complete() and
 connection_failed(). 
-
-Does the Connector need to be a singleton?  Couldn't the equivalent of a
-ConnectHandler be instantiated each time a connection needs to be made?  How
-does that fit in with the Connector pattern?
 """
 
 import errno
@@ -22,14 +18,9 @@ from reactor import Reactor
 
 logger = logging.getLogger('bt.connector')
 
-@singleton
 class Connector(object):
-    def connect(self, addr, requestor):
-        logger.debug("Connect to address {}".format(addr))
-        ConnectHandler(addr, requestor)
-
-class ConnectHandler(object):
     def __init__(self, addr, requestor):
+        logger.debug("Connect to address {}".format(addr))
         self._requestor = requestor
         self._reactor = Reactor()
         self._addr = addr

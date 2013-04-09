@@ -63,7 +63,7 @@ class PeerProxy(object):
 
             self._translator = None
             self._socketreaderwriter = None
-            Connector().connect(addr, self)        
+            Connector(addr, self)        
 
             self._state = self._States.Awaiting_Connection
         else:
