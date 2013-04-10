@@ -20,7 +20,6 @@ import bisect
 import logging
 import select
 import time
-from decorators import singleton
 
 logger = logging.getLogger('bt.reactor')
 
