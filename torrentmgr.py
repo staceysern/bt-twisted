@@ -39,7 +39,6 @@ from bitstring import BitArray
 from filemgr import FileMgr
 from metainfo import Metainfo
 from peerproxy import PeerProxy
-from reactor import Reactor
 from trackerproxy import TrackerError
 from trackerproxy import TrackerProxy
 

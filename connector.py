@@ -13,7 +13,6 @@ connection_failed().
 import errno
 import logging
 import socket
-from reactor import Reactor
 
 logger = logging.getLogger('bt.connector')
 

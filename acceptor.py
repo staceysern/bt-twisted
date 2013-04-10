@@ -11,7 +11,6 @@ A server must implement the function accepted_connection().
 
 import logging
 import socket
-from reactor import Reactor
 
 logger = logging.getLogger('bt.acceptor')
 

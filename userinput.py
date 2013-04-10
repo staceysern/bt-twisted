@@ -11,7 +11,6 @@ import fcntl
 import logging
 import os
 import sys
-from reactor import Reactor
 
 logger = logging.getLogger('bt.userinput')
 

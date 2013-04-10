@@ -20,7 +20,6 @@ the bytes that were actually sent from the output list.
 
 import logging
 import socket
-from reactor import Reactor
 
 logger = logging.getLogger('bt.socketreaderwriter')
 
