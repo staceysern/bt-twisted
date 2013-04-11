@@ -44,13 +44,13 @@ class BitTorrentClient(object):
         self._peer_id = "-HS0001-"+str(int(time.time())).zfill(12)
         self._torrents = {}
 
-        for self._port in range(_PORT_FIRST,_PORT_LAST+1):
+        for self._port in range(_PORT_FIRST, _PORT_LAST+1):
             try:
                 self._acceptor = Acceptor(("localhost", self._port), 
                                           self, self._reactor)
                 break
-            except Exception as e:
-                logger.debug(e)
+            except Exception as err:
+                logger.debug(err)
                 continue
         else:
             logger.critical(("Could not find free port in range {}-{} to "+
@@ -68,11 +68,12 @@ class BitTorrentClient(object):
 
     def add_torrent(self, filename):
         try:
-            t = TorrentMgr(filename, self._port, self._peer_id, self._reactor)
-        except TorrentMgrError as e:
+            torrent = TorrentMgr(filename, self._port, self._peer_id,
+                                 self._reactor)
+        except TorrentMgrError:
             return
 
-        self._torrents[t.info_hash] = t
+        self._torrents[torrent.info_hash] = torrent
 
     # Acceptor callback
 

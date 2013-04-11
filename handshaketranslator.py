@@ -34,7 +34,6 @@ Would it make sense to make a Translator base class with common code which all
 the actual translators would inherit from?
 """
 
-import bitstring
 import logging
 import struct
 
@@ -76,9 +75,9 @@ class HandshakeTranslator(object):
     def get_rx_buffer(self):
         return self._view[self._bytes_received:], self._bytes_needed
 
-    def rx_bytes(self, n):
-        self._bytes_received += n
-        self._bytes_needed -= n
+    def rx_bytes(self, num):
+        self._bytes_received += num
+        self._bytes_needed -= num
 
         if self._bytes_needed == 0:
             if self._rx_state == self._States.Length:
@@ -116,7 +115,7 @@ class HandshakeTranslator(object):
         if self._readerwriter:
             self._readerwriter.tx_bytes(struct.pack('B19c', 19, 
                                                *list('BitTorrent protocol')))
-            self._readerwriter.tx_bytes(struct.pack('8B',*([0]*8)))
+            self._readerwriter.tx_bytes(struct.pack('8B', *([0]*8)))
             self._readerwriter.tx_bytes(info_hash)
             self._readerwriter.tx_bytes(peer_id)
 

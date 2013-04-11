@@ -90,15 +90,15 @@ class PeerWireTranslator(object):
         self._readerwriter.set_receiver(self)
 
     def unset_readerwriter(self):
-        self._readerwriter.unset_receiver
+        self._readerwriter.unset_receiver()
         self._readerwriter = None
 
     def get_rx_buffer(self):
         return self._current_view[self._bytes_received:], self._bytes_needed 
             
-    def rx_bytes(self, n):
-        self._bytes_received += n
-        self._bytes_needed -= n
+    def rx_bytes(self, num):
+        self._bytes_received += num
+        self._bytes_needed -= num
 
         if self._bytes_needed == 0:
             if self._rx_state == self._States.Length:
@@ -114,14 +114,14 @@ class PeerWireTranslator(object):
                     self._current_buf = bytearray(length)
                     self._current_view = memoryview(self._current_buf)
             else:
-                (messageID,) = struct.unpack("B", 
+                (message_id,) = struct.unpack("B", 
                                              buffer(self._current_buf[0:1]))
  
                 try:
-                    self._rx_functions[messageID]()
+                    self._rx_functions[message_id]()
                 except KeyError:
                     logger.debug("Received message with invalid msg  id: {}". 
-                                 format(messageID))
+                                 format(message_id))
 
                 self._length_state_setup()
 

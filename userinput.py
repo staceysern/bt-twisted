@@ -18,9 +18,9 @@ class UserInput(object):
     def __init__(self, client, reactor):
         self._client = client
 
-        fd = sys.stdin.fileno()
-        fl = fcntl.fcntl(fd, fcntl.F_GETFL)
-        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+        fileno = sys.stdin.fileno()
+        flags = fcntl.fcntl(fileno, fcntl.F_GETFL)
+        fcntl.fcntl(fileno, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
         reactor.register_for_read_events(self)
 

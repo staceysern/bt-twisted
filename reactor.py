@@ -51,9 +51,9 @@ class Reactor(object):
         return self._timer_id
 
     def cancel_timer(self, timer_id):
-        self._timer_handlers = [(timeout, handler, id) 
-                                for (timeout, handler, id) 
-                                in self._timer_handlers if id != timer_id]
+        self._timer_handlers = [(timeout, handler, tid) 
+                                for (timeout, handler, tid) 
+                                in self._timer_handlers if tid != timer_id]
 
     def run(self):
         while True:
@@ -65,17 +65,17 @@ class Reactor(object):
                     unexpired = i+1 
                 else:
                     unexpired = i
-                    break;
+                    break
             self._timer_handlers = self._timer_handlers[unexpired:]
             
             readable, writable, _ = select.select(self._read_handlers.keys(), 
                                                   self._write_handlers.keys(),
                                                   [], 0.001)
 
-            for r in readable:
-                if r in self._read_handlers.keys():
-                    self._read_handlers[r].read_event()
+            for stream in readable:
+                if stream in self._read_handlers.keys():
+                    self._read_handlers[stream].read_event()
 
-            for r in writable:
-                if r in self._write_handlers.keys():
-                    self._write_handlers[r].write_event()
+            for stream in writable:
+                if stream in self._write_handlers.keys():
+                    self._write_handlers[stream].write_event()

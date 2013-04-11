@@ -16,7 +16,6 @@ the tracker reflecting its progress in downloading the file?
 
 import bencode
 import logging
-import metainfo
 import requests
 import sys
 
@@ -42,12 +41,12 @@ class TrackerProxy(object):
                  }
 
         try:
-            r = requests.get(self._metainfo.announce, params=params)
-        except requests.ConnectionError :
+            response = requests.get(self._metainfo.announce, params=params)
+        except requests.ConnectionError:
             raise TrackerError("Can't connect to the tracker at {}".
                                format(self._metainfo.announce))
 
-        response = bencode.bdecode(r.content)
+        response = bencode.bdecode(response.content)
 
         if 'failure reason' in response:
             raise TrackerError("Failure reason: {}".
@@ -55,15 +54,15 @@ class TrackerProxy(object):
 
         if 'warning message' in response:
             logger.warning("Warning: {}".format(response['warning message']))
-            print >>sys.stderr, ("Warning: {}".
+            print >> sys.stderr, ("Warning: {}".
                                  format(response['warning message']))
 
         self._min_interval = response.get('min interval', 0)
         self._tracker_id = response.get('tracker id', 0)
 
         self._interval = response.get('interval', 0)
-        self._complete = response.get('complete',0)
-        self._incomplete = response.get('incomplete',0)
+        self._complete = response.get('complete', 0)
+        self._incomplete = response.get('incomplete', 0)
 
         if 'peers' not in response:
             raise TrackerError("Response from tracker missing peers")
@@ -73,7 +72,7 @@ class TrackerProxy(object):
         else:
             self._peers = []
             peers = response['peers']
-            for offset in xrange(0, len(peers),6):
+            for offset in xrange(0, len(peers), 6):
                 self._peers.append({'ip': "{}.{}.{}.{}".format(
                                              str(ord(peers[offset])),
                                              str(ord(peers[offset+1])),
@@ -82,13 +81,13 @@ class TrackerProxy(object):
                                    'port': ord(peers[offset+4])*256 +
                                            ord(peers[offset+5])})
 
-    def get_peers(self, n):
-        if (len(self._peers) <= n):
-            n = len(self._peers)
+    def get_peers(self, num):
+        if (len(self._peers) <= num):
+            num = len(self._peers)
 
-        p = self._peers[:n]
-        self._peers = self._peers[n:]
-        return p
+        peers = self._peers[:num]
+        self._peers = self._peers[num:]
+        return peers
             
 
             
