@@ -50,9 +50,9 @@ class SocketReaderWriter(object):
             view, size = self._receiver.get_rx_buffer()
 
             try:
-                n = self._socket.recv_into(view, size)
-                if n > 0:
-                    self._receiver.rx_bytes(n)
+                num = self._socket.recv_into(view, size)
+                if num > 0:
+                    self._receiver.rx_bytes(num)
                 else:
                     if self._receiver:
                         self._receiver.connection_lost()
@@ -66,16 +66,16 @@ class SocketReaderWriter(object):
             self._reactor.unregister_for_write_events(self)
         else:
             while self._output != []:
-                n = self._socket.send(self._output[0])
+                num = self._socket.send(self._output[0])
 
-                if n == len(self._output[0]):
+                if num == len(self._output[0]):
                     del self._output[0]
                 else:
-                    self._output[0] = self._output[0][n:]
+                    self._output[0] = self._output[0][num:]
                     break
 
-    def tx_bytes(self, b):
-        self._output.append(b) 
+    def tx_bytes(self, bytestr):
+        self._output.append(bytestr) 
         if len(self._output) == 1:
             self._reactor.register_for_write_events(self)
 

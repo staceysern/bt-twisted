@@ -34,7 +34,6 @@ strategy or uploading.
 
 import hashlib
 import logging
-import random
 from bitstring import BitArray
 from filemgr import FileMgr
 from metainfo import Metainfo
@@ -67,9 +66,9 @@ class TorrentMgr(object):
 
         try:
             self._metainfo = Metainfo(filename)
-        except (IOError, ValueError) as e:
-            logger.error(e) 
-            raise TorrentMgrError(e.strerror) 
+        except (IOError, ValueError) as err:
+            logger.error(err) 
+            raise TorrentMgrError(err.strerror) 
 
         # _have is the bitfield for this torrent. It is initialized to reflect
         # which pieces are already available on disk.
@@ -79,16 +78,16 @@ class TorrentMgr(object):
         try:
             self._tracker_proxy = TrackerProxy(self._metainfo, self._port, 
                                                self._peer_id)
-        except TrackerError as e:
+        except TrackerError as err:
             logger.critical("Could not connect to tracker at {}".
                             format(self._metainfo.announce))
-            logger.debug("    TrackerError: {}".format(e.value.message))
-            raise TorrentMgrError(e.value.message)
+            logger.debug("    TrackerError: {}".format(err.value.message))
+            raise TorrentMgrError(err.value.message)
 
         # _needed is a dictionary of pieces which are still needed.  
         # The value for each piece is a tuple of the number of peers which
         # have the piece and a list of those peers.
-        self._needed = { piece: (0,[]) for piece 
+        self._needed = { piece: (0, []) for piece 
                          in list(self._have.findall('0b0'))}
 
         # _interested is a dictionary of peers to whom interest has been 
@@ -120,12 +119,12 @@ class TorrentMgr(object):
 
         self._connect_to_peers(20)
 
-    def _connect_to_peers(self, n):
+    def _connect_to_peers(self, num):
         # Get addresses of n peers from the tracker and try to establish
         # a connection with each
-        peers = self._tracker_proxy.get_peers(n)
-        for p in peers:
-            peer = PeerProxy(self, self._peer_id, (p['ip'], p['port']), 
+        addrs = self._tracker_proxy.get_peers(num)
+        for addr in addrs:
+            peer = PeerProxy(self, self._peer_id, (addr['ip'], addr['port']), 
                              info_hash=self._metainfo.info_hash)
             self._peers.append(peer)
             self._bitfields[peer] = BitArray(self._metainfo.num_pieces)
@@ -178,8 +177,9 @@ class TorrentMgr(object):
             needed = self._have.copy()
             needed.invert()
             of_interest = list((needed & self._bitfields[peer]).findall('0b1'))
-            dont_consider = [i for i,_,_,_ in self._interested.values()]
-            dont_consider.extend([i for i,_,_,_,_ in self._requesting.values()])
+            dont_consider = [i for i, _, _, _ in self._interested.values()]
+            dont_consider.extend([i for i, _, _, _, _ 
+                                  in self._requesting.values()])
 
             # When there are potential pieces for the peer to download, give
             # preference to a piece that has already been partially

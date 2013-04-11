@@ -11,15 +11,14 @@ be different.
 """
 
 import bencode
-import sys
 import hashlib
 
 class Metainfo(object):
     def __init__(self, filename):
-        f = open(filename, 'rb')    
+        metafile = open(filename, 'rb')    
         
         try:
-            self._metainfo = bencode.bdecode(f.read())
+            self._metainfo = bencode.bdecode(metafile.read())
         except bencode.BTFailure:
             raise ValueError("Invalid BitTorrent metainfo file format")
 
@@ -41,9 +40,9 @@ class Metainfo(object):
             else:
                 # Multi file mode
                 self._directory = info['name']
-                self._files = [(d['path'],d['length']) 
+                self._files = [(d['path'], d['length']) 
                                for d in self._metainfo['info']['files']] 
-                self._length = sum([length for (path, length) in self._files])
+                self._length = sum([length for (_, length) in self._files])
         except:
             raise ValueError("Invalid BitTorrent metainfo file format")
 

@@ -49,10 +49,10 @@ class PeerProxy(object):
         self._peer_id = peer_id
         self._addr = addr
 
-        self._choked = True;
-        self._interested = False;
-        self._peer_choked = True;
-        self._peer_interested = False;
+        self._choked = True
+        self._interested = False
+        self._peer_choked = True
+        self._peer_interested = False
 
         if len(peer_id) != 20:
             raise ValueError("Peer id must be 20 bytes long")
@@ -67,7 +67,7 @@ class PeerProxy(object):
 
             self._state = self._States.Awaiting_Connection
         else:
-            self._setup_handshake_translator(self)
+            self._setup_handshake_translator()
             self._state = self._States.Awaiting_Handshake
 
     def _setup_handshake_translator(self):
@@ -106,7 +106,7 @@ class PeerProxy(object):
 
     def _valid_tx_state(self):
         if self._state != self._States.Peer_to_Peer:
-            if self._state == self._States.Bitfiled_Allowed:
+            if self._state == self._States.Bitfield_Allowed:
                 self._state = self._States.Peer_to_Peer
             else:
                 return False 
@@ -215,7 +215,7 @@ class PeerProxy(object):
     # Client calls
 
     def drop_connection(self):
-        self._drop_connection(FALSE)
+        self._drop_connection(False)
 
     def choke(self):
         if self._valid_tx_state():
@@ -247,7 +247,7 @@ class PeerProxy(object):
 
     def piece(self, index, begin, buf, offset):
         if self._valid_tx_state():
-            self._translator.tx_piece(index, begin, buf, offset)
+            self._translator.tx_piece(index, begin, buf)
 
     def cancel(self, index, begin, length):
         if self._valid_tx_state():
