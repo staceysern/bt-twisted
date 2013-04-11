@@ -46,6 +46,7 @@ logger = logging.getLogger('bt.torrentmgr')
 
 _BLOCK_SIZE = 2**14
 _TIMER_INTERVAL = 10
+_MAX_RETRIES = 2
 
 class TorrentMgrError(Exception):
     pass
@@ -386,7 +387,7 @@ class TorrentMgr(object):
         # excessive period of time, stop being interested, free up assigned
         # piece and connect to another peer
         for peer, (_, _, _, tick) in self._interested.items():
-            if tick + 3 == self._tick:
+            if tick + 4 == self._tick:
                 logger.debug("Timed out on interest for peer {}".
                              format(str(peer.addr())))
                 peer.not_interested()
@@ -398,12 +399,12 @@ class TorrentMgr(object):
         # ignored
         for peer, (index, offset, sha1, tick, retries) \
         in self._requesting.items():
-            if tick + 4 == self._tick:
+            if tick + 5 == self._tick:
                 logger.debug("Timed out on request for peer {}".
                              format(str(peer.addr())))
-                if retries == 0:
+                if retries < _MAX_RETRIES:
                     self._requesting[peer] = (index, offset, sha1, 
-                                              self._tick, 1)
+                                              self._tick, retries+1)
                     self._request(peer)
                 else:
                     self._partial.append((index, offset, sha1))
