@@ -3,10 +3,11 @@ The PeerWireTranslator is responsible for translating a stream of bytes into
 higher level messages and vice versa related to the peer wire protocol between
 BitTorrent peers.  The bytes are exchanged with a readerwriter and the higher
 level messages are exchanged with a receiver.  The creator of the
-PeerWireTranslator must subsequently provide it with a readerwriter using the
-set_readerwriter() method.  When it no longer needs the PeerWireTranslator, it
-should call the unset_readerwriter() method so that all references to the
-PeerWireTranslator can be released and it can be properly garbage collected.
+PeerWireTranslator must provide it with a readerwriter upon creation or
+subsequently using the set_readerwriter() method.  When it no longer needs the 
+PeerWireTranslator, it should call the unset_readerwriter() method so that all 
+references to the PeerWireTranslator can be released and it can be properly 
+garbage collected.
 
 On the receiver side, when told to transmit one of the peer wire protocol 
 messages, the PeerWireTranslator generates a set of bytes to send to the 
@@ -54,13 +55,13 @@ class PeerWireTranslator(object):
     class _States(object):
         Length, Message = range(2)
 
-    def __init__(self):
+    def __init__(self, receiver = None, readerwriter = None):
         self._length_buf = bytearray(_LENGTH_LEN)
         self._length_view = memoryview(self._length_buf)
         self._length_state_setup()
 
-        self._receiver = None
-        self._readerwriter = None
+        self._receiver = receiver
+        self._readerwriter = readerwriter
 
         self._rx_functions = { _MSG_CHOKE: self.rx_choke, 
                                _MSG_UNCHOKE: self.rx_unchoke,

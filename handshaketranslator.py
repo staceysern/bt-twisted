@@ -2,11 +2,10 @@
 The HandshakeTranslator translates a stream of bytes into higher level messages
 and vice versa related to the handshake between BitTorrent peers.  The bytes are
 exchanged with a readerwriter and the higher level messages are exchanged with a
-receiver.  The creator of the HandshakeTranslator must subsequently provide it 
-with a readerwriter using the set_readerwriter() method.  When it no longer 
-needs the HandshakeTranslator, it should call the unset_readerwriter() method so
-that all references to the HandshakeTranslator can be released and it can be 
-properly garbage collected.
+receiver.  The creator of the HandshakeTranslator must provide it with a 
+readerwriter upon creation or subsequently using the set_readerwriter() method. When it no longer needs the HandshakeTranslator, it should call the 
+unset_readerwriter() method so that all references to the HandshakeTranslator 
+can be released and it can be properly garbage collected.
 
 On the receiver side, when told to transmit a handshake message, the 
 HandshakeTranslator generates a set of bytes to send to the readerwriter.  When
@@ -47,7 +46,7 @@ class HandshakeTranslator(object):
     class _States(object):
         Length, Protocol, Rest = range(3)
 
-    def __init__(self):
+    def __init__(self, receiver = None, readerwriter = None):
         self._buffer = bytearray(_BUFFER_SIZE)
         self._view = memoryview(self._buffer)
 
@@ -55,8 +54,8 @@ class HandshakeTranslator(object):
         self._bytes_needed = _LENGTH_LEN 
         self._bytes_received = 0
 
-        self._receiver = None
-        self._readerwriter = None
+        self._receiver = receiver
+        self._readerwriter = readerwriter
 
     def set_receiver(self, receiver):
         self._receiver = receiver

@@ -112,7 +112,7 @@ class TorrentMgr(object):
         # bytes.
         self._partial = []
 
-        self._reactor.schedule_timer(_TIMER_INTERVAL, self)
+        self._reactor.callLater(_TIMER_INTERVAL, self.timer_event)
         self._tick = 1
 
         print "Starting to serve torrent {}".format(filename)
@@ -379,7 +379,7 @@ class TorrentMgr(object):
     # Reactor callback
 
     def timer_event(self):
-        self._reactor.schedule_timer(_TIMER_INTERVAL, self)
+        self._reactor.callLater(_TIMER_INTERVAL, self.timer_event)
         self._tick += 1
 
         # For any peers that have been interested but unchoked for an

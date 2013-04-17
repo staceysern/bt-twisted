@@ -2,10 +2,10 @@
 The PeerProxy represents a BitTorrent peer and communicates with and maintains 
 state associated with that peer.  A PeerProxy can be created in one of two ways 
 which reflect whether it or the remote end is initiating the connection.  When 
-no socket is supplied, the PeerProxy is expected to initiate the connection and 
-handshake with the peer.  When a socket is supplied, the far end has already 
-initiated the connection and the PeerProxy should wait for a handshake from the 
-far end.
+no protocol is supplied, the PeerProxy is expected to initiate the connection 
+and handshake with the peer.  When a protocol is supplied, the far end has 
+already initiated the connection and the PeerProxy should wait for a handshake 
+from the far end.
 
 The PeerProxy maintains the state of the connection through six states.
 When the far end initiates a connection, the PeerProxy starts off in the
@@ -30,10 +30,11 @@ Currently, the PeerProxy does not handle or generate keep alives at all.
 """
 
 import logging
-from connector import Connector
+
 from handshaketranslator import HandshakeTranslator
 from peerwiretranslator import PeerWireTranslator
-from socketreaderwriter import SocketReaderWriter
+from protocoladapter import ProtocolAdapterFactory
+from twisted.internet.endpoints import TCP4ClientEndpoint
 
 logger = logging.getLogger('bt.peerproxy')
 
@@ -43,10 +44,10 @@ class PeerProxy(object):
          Bitfield_Allowed, Peer_to_Peer, Disconnected) = range(6)
 
     def __init__(self, client, peer_id, addr, reactor, 
-                 socket=None, info_hash=None):
+                 protocol=None, info_hash=None):
         self._client = client
         self._reactor = reactor
-        self._socket = socket
+        self._protocol = protocol
         self._info_hash = info_hash
         self._peer_id = peer_id
         self._addr = addr
@@ -59,13 +60,16 @@ class PeerProxy(object):
         if len(peer_id) != 20:
             raise ValueError("Peer id must be 20 bytes long")
 
-        if socket == None:
+        if protocol == None:
             if info_hash == None or len(info_hash) != 20:
                 raise ValueError("Info hash must be a 20 byte value")
 
             self._translator = None
-            self._socketreaderwriter = None
-            Connector(addr, self, self._reactor)        
+
+            host, port = addr
+            d = (TCP4ClientEndpoint(reactor, host, port)
+                 .connect(ProtocolAdapterFactory(self)))
+            d.addErrback(self.connection_failed)
 
             self._state = self._States.Awaiting_Connection
         else:
@@ -73,11 +77,8 @@ class PeerProxy(object):
             self._state = self._States.Awaiting_Handshake
 
     def _setup_handshake_translator(self):
-        self._socketreaderwriter = SocketReaderWriter(self._socket, 
-                                                      self._reactor)
-
         self._translator = HandshakeTranslator()
-        self._translator.set_readerwriter(self._socketreaderwriter)
+        self._translator.set_readerwriter(self._protocol)
         self._translator.set_receiver(self)
 
     def _drop_connection(self, notify_client=True):
@@ -86,11 +87,8 @@ class PeerProxy(object):
             self._translator.unset_readerwriter()
             self._translator = None
 
-        if self._socketreaderwriter:
-            self._socketreaderwriter.stop()
-
-        if self._socket:
-            self._socket.close()
+        if self._protocol:
+            self._protocol.stop()
 
         self._state = self._States.Disconnected
 
@@ -130,16 +128,16 @@ class PeerProxy(object):
     def is_peer_interested(self):
         return self._peer_interested
 
-    # Connector callbacks
+    # Callbacks which result from TCP4ClientEndpoint.connect()
 
-    def connection_complete(self, addr, socket):
-        self._socket = socket
+    def connection_complete(self, protocol):
+        self._protocol = protocol
         self._setup_handshake_translator()
         
         self._translator.tx_handshake(0, self._info_hash, self._peer_id)
         self._state = self._States.Handshake_Initiated
 
-    def connection_failed(self, addr):
+    def connection_failed(self, reason):
         self._client.peer_unconnected(self)
 
     # Translator callbacks
@@ -158,7 +156,7 @@ class PeerProxy(object):
                 self._translator.unset_readerwriter()
 
                 self._translator = PeerWireTranslator()
-                self._translator.set_readerwriter(self._socketreaderwriter)
+                self._translator.set_readerwriter(self._protocol)
                 self._translator.set_receiver(self)
                 self._state = self._States.Bitfield_Allowed 
 
