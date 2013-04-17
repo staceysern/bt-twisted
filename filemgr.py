@@ -3,6 +3,13 @@ The FileMgr reads and writes the set of torrent files.  If the files exist, it
 opens them and creates a bitfield to reflect which pieces are present (not
 implemented).  If not, it creates the files.  The FileMgr maps locations 
 in the set of pieces to where they appear in the files and vice versa.
+
+Files are flushed after every write.  Otherwise, received blocks which have
+been written might be lost on premature termination of the program.
+
+Right now, the FileMgr keeps every file in the torrent open.  This may present
+a problem if the client is serving many torrents.  It might be better to keep 
+open only those files that are actively being downloaded or uploaded.
 """
 
 import errno
@@ -28,6 +35,9 @@ class FileMgr(object):
 
         files =  metainfo.files
 
+        # _files is a list of files in the torrent.  Each entry is a 
+        # tuple containing the file descriptor, length of the file and
+        # offset of the file within the torrent
         self._files = []
 
         offset = 0
@@ -78,15 +88,10 @@ class FileMgr(object):
         fd.seek(offset_in_file)
         if len(buf) <= file_length - offset_in_file:
             fd.write(buf)
+            fd.flush()
         else:
             to_write = file_length - offset_in_file
             fd.write(buf[:to_write])
+            fd.flush()
             self.write_block(piece_index, offset_in_piece + to_write,
                         buf[to_write:], file_index+1)
-
-    def flush(self): 
-        for fd, _, _ in self._files:
-            fd.flush()
-
-        
-        

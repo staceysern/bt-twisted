@@ -363,7 +363,6 @@ class TorrentMgr(object):
                 else:
                     logger.info("Successfully downloaded entire torrent {}".
                                 format(self._filename))
-                    self._filemgr.flush()
 
     def peer_interested(self, peer):
         pass
