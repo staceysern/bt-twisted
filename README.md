@@ -10,16 +10,6 @@ Invocation
 
 python client.py 
 
-Requirements
-------------
-
-The following libraries are required:  
-
-bencode   
-bitstring  
-requests  
-
-
 Unit Tests
 ----------
 

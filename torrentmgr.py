@@ -5,15 +5,15 @@ to reflect whether pieces of the torrent are already on disk (not implemented).
 Then it communicates with the tracker to get the addresses of peers.
 
 The TorrentMgr determines the strategy of whom to contact for which pieces 
-including end game strategy.  It manages the amount of download and upload 
-traffic is also a function of the TorrentMgr (not implemented). 
+including end game strategy.  It also manages the amount of download and 
+upload traffic (not implemented). 
 
 This implementation of the TorrentMgr is simple in many ways.  Initially, it
 opens a fixed number of connections with peers.  Upon receipt of a bitfield
 or have message which includes a needed piece, it expresses interest to that
 peer.  When that peer unchokes, it starts sequentially requesting blocks for
 that piece.  If the peer chokes in the middle of the piece, the data received 
-so far is put aside and the rest of the piece assigned to the next free, 
+so far is put aside and the rest of the piece is assigned to the next free, 
 unchoked peer which has the piece.  When a connected peer has multiple needed
 pieces, the rarest piece across all peers is chosen to acquire.  When a peer 
 delivers a complete piece and has no other needed pieces, the TorrentMgr tells
@@ -82,8 +82,8 @@ class TorrentMgr(object):
         except TrackerError as err:
             logger.critical("Could not connect to tracker at {}".
                             format(self._metainfo.announce))
-            logger.debug("    TrackerError: {}".format(err.value.message))
-            raise TorrentMgrError(err.value.message)
+            logger.debug("    TrackerError: {}".format(err.message))
+            raise TorrentMgrError(err.message)
 
         # _needed is a dictionary of pieces which are still needed.  
         # The value for each piece is a tuple of the number of peers which
