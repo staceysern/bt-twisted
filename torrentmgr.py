@@ -330,6 +330,14 @@ class TorrentMgr(object):
             self._request(peer)
 
     def peer_sent_block(self, peer, index, begin, buf):
+        if not peer in self._requesting:
+            # If a peer is very slow in responding, a block could come after
+            # it has timed out.  Just ignore the data at this point and 
+            # ignore the slow peer
+            logger.debug("Received block from peer {} which has timed out"
+                         .format(str(peer.addr())))
+            return
+
         piece, received_bytes, sha1, _, _ = self._requesting[peer]
         if piece == index and begin == received_bytes:
             # When the next expected block is received, update the hash value
