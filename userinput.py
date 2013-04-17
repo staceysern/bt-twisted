@@ -15,6 +15,7 @@ from reactor import Reactor
 
 logger = logging.getLogger('bt.userinput')
 
+
 class UserInput(object):
     def __init__(self, client):
         self._client = client
@@ -31,5 +32,3 @@ class UserInput(object):
     def read_event(self):
         filename = sys.stdin.read()
         self._client.add_torrent(filename[:-1])
-         
-    

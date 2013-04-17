@@ -4,19 +4,20 @@ available via properties.  Upon initialization, Metainfo raises an exception if
 the specified file doesn't exist (IOError) or is not a valid bencoded
 BitTorrent metainfo file (ValueError).
 
-The SHA1 hash is currently computed on the info key which is bencoded after 
-previously having been bdecoded.  This is probably not the right way to do it 
-because if the order of the keys is different from the original the hash will 
-be different. 
+The SHA1 hash is currently computed on the info key which is bencoded after
+previously having been bdecoded.  This is probably not the right way to do it
+because if the order of the keys is different from the original the hash will
+be different.
 """
 
 import bencode
 import hashlib
 
+
 class Metainfo(object):
     def __init__(self, filename):
-        metafile = open(filename, 'rb')    
-        
+        metafile = open(filename, 'rb')
+
         try:
             self._metainfo = bencode.bdecode(metafile.read())
         except bencode.BTFailure:
@@ -26,9 +27,9 @@ class Metainfo(object):
             raise ValueError("Invalid BitTorrent metainfo file format")
 
         info = self._metainfo['info']
-        if ('piece length' not in info or 
-            'pieces' not in info or 
-            'name' not in info):
+        if ('piece length' not in info
+                or 'pieces' not in info
+                or 'name' not in info):
             raise ValueError("Invalid BitTorrent metainfo file format")
 
         try:
@@ -40,13 +41,13 @@ class Metainfo(object):
             else:
                 # Multi file mode
                 self._directory = info['name']
-                self._files = [(d['path'], d['length']) 
-                               for d in self._metainfo['info']['files']] 
+                self._files = [(d['path'], d['length'])
+                               for d in self._metainfo['info']['files']]
                 self._length = sum([length for (_, length) in self._files])
         except:
             raise ValueError("Invalid BitTorrent metainfo file format")
 
-        self._hash = hashlib.sha1(bencode.bencode(info)).digest() 
+        self._hash = hashlib.sha1(bencode.bencode(info)).digest()
 
         self._num_pieces = len(self._metainfo['info']['pieces'])/20
 

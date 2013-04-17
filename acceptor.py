@@ -1,10 +1,10 @@
 """
-The Acceptor passively waits for connection requests and accepts them.  
-An Acceptor is created with an address on which to accept connections and a 
-reference to a server to notify about new connections.  The Acceptor creates a 
-socket, binds it to the address and begins to listen on the socket.  It 
-registers with the Reactor to be notified for read events on the socket which 
-signal connection requests.  
+The Acceptor passively waits for connection requests and accepts them.
+An Acceptor is created with an address on which to accept connections and a
+reference to a server to notify about new connections.  The Acceptor creates a
+socket, binds it to the address and begins to listen on the socket.  It
+registers with the Reactor to be notified for read events on the socket which
+signal connection requests.
 
 A server must implement the function accepted_connection().
 """
@@ -14,6 +14,7 @@ import socket
 from reactor import Reactor
 
 logger = logging.getLogger('bt.acceptor')
+
 
 class Acceptor(object):
     def __init__(self, addr, server):
@@ -35,6 +36,3 @@ class Acceptor(object):
         logger.info("Accepted connection from {0}".format(str(addr)))
 
         self._server.accepted_connection(addr, connection)
-        
-
-

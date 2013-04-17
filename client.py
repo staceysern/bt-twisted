@@ -1,9 +1,9 @@
 """
-The BitTorrentClient sets up necessary objects before creating a Reactor and 
-calling run on it to start the event loop.  From there all other functions of 
+The BitTorrentClient sets up necessary objects before creating a Reactor and
+calling run on it to start the event loop.  From there all other functions of
 the BitTorrent client are event driven and flow from calls from the Reactor.
 
-Initially, the client chooses a peer_id, creates an Acceptor for incoming 
+Initially, the client chooses a peer_id, creates an Acceptor for incoming
 connections, and creates a UserInput to get input from the user.  When
 UserInput notifies that client that the user has specified that a torrent
 should be served, the BitTorrentClient creates a TorrentMgr for that torrent.
@@ -11,7 +11,7 @@ should be served, the BitTorrentClient creates a TorrentMgr for that torrent.
 Since uploading is not yet fully supported, the place of the Acceptor in the
 system hasn't fully been thought out.  When the Acceptor presents an incoming
 connection, a PeerProxy must be created with the connection and it should
-handshake with the peer.  After the handshake, it can be determined which 
+handshake with the peer.  After the handshake, it can be determined which
 torrent the peer wishes to upload and the PeerProxy can be added to the
 appropriate torrent.  It's not clear whether this functionality belongs in the
 BitTorrentClient or perhaps in an incoming connection manager.
@@ -34,8 +34,9 @@ from torrentmgr import TorrentMgrError
 _PORT_FIRST = 6881
 _PORT_LAST = 6889
 
-logging.config.fileConfig('logging.conf') 
+logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('bt')
+
 
 class BitTorrentClient(object):
     def __init__(self):
@@ -50,9 +51,9 @@ class BitTorrentClient(object):
                 logger.debug(err)
                 continue
         else:
-            logger.critical(("Could not find free port in range {}-{} to "+
-                             "accept connections").
-                             format(_PORT_FIRST, _PORT_LAST))
+            logger.critical(("Could not find free port in range {}-{} to "
+                             "accept connections")
+                            .format(_PORT_FIRST, _PORT_LAST))
             sys.exit(1)
 
         logger.info("Listening on port {}".format(self._port))
@@ -78,5 +79,3 @@ class BitTorrentClient(object):
 if __name__ == '__main__':
     logger.info("Starting BitTorrent Client")
     BitTorrentClient()
-
-

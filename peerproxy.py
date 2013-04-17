@@ -1,10 +1,10 @@
 """
-The PeerProxy represents a BitTorrent peer and communicates with and maintains 
-state associated with that peer.  A PeerProxy can be created in one of two ways 
-which reflect whether it or the remote end is initiating the connection.  When 
-no socket is supplied, the PeerProxy is expected to initiate the connection and 
-handshake with the peer.  When a socket is supplied, the far end has already 
-initiated the connection and the PeerProxy should wait for a handshake from the 
+The PeerProxy represents a BitTorrent peer and communicates with and maintains
+state associated with that peer.  A PeerProxy can be created in one of two ways
+which reflect whether it or the remote end is initiating the connection.  When
+no socket is supplied, the PeerProxy is expected to initiate the connection and
+handshake with the peer.  When a socket is supplied, the far end has already
+initiated the connection and the PeerProxy should wait for a handshake from the
 far end.
 
 The PeerProxy maintains the state of the connection through six states.
@@ -20,7 +20,7 @@ the state is changed to Peer_to_Peer.  When a bitfield message is received in
 any state other than Bitfield_Allowed, the connection is dropped and the state
 is changed to Disconnected.
 
-The PeerProxy uses a translator to interpret the incoming stream of bytes into 
+The PeerProxy uses a translator to interpret the incoming stream of bytes into
 higher level messages and to construct outgoing messages into a stream of
 bytes.  Initially, the PeerProxy uses a HandshakeTranslator to translate the
 "handshake" protocol.  After the handshake has been established, it sets up a
@@ -37,9 +37,10 @@ from socketreaderwriter import SocketReaderWriter
 
 logger = logging.getLogger('bt.peerproxy')
 
+
 class PeerProxy(object):
     class _States(object):
-        (Awaiting_Handshake, Awaiting_Connection, Handshake_Initiated, 
+        (Awaiting_Handshake, Awaiting_Connection, Handshake_Initiated,
          Bitfield_Allowed, Peer_to_Peer, Disconnected) = range(6)
 
     def __init__(self, client, peer_id, addr, socket=None, info_hash=None):
@@ -57,13 +58,13 @@ class PeerProxy(object):
         if len(peer_id) != 20:
             raise ValueError("Peer id must be 20 bytes long")
 
-        if socket == None:
-            if info_hash == None or len(info_hash) != 20:
+        if not socket:
+            if not info_hash or len(info_hash) != 20:
                 raise ValueError("Info hash must be a 20 byte value")
 
             self._translator = None
             self._socketreaderwriter = None
-            Connector().connect(addr, self)        
+            Connector().connect(addr, self)
 
             self._state = self._States.Awaiting_Connection
         else:
@@ -92,7 +93,7 @@ class PeerProxy(object):
         self._state = self._States.Disconnected
 
         if notify_client:
-            self._client.peer_unconnected(self) 
+            self._client.peer_unconnected(self)
 
     def _valid_rx_state(self):
         if self._state != self._States.Peer_to_Peer:
@@ -101,7 +102,7 @@ class PeerProxy(object):
             else:
                 if self._state != self._States.Disconnected:
                     self._drop_connection()
-                return False 
+                return False
         return True
 
     def _valid_tx_state(self):
@@ -109,7 +110,7 @@ class PeerProxy(object):
             if self._state == self._States.Bitfield_Allowed:
                 self._state = self._States.Peer_to_Peer
             else:
-                return False 
+                return False
         return True
 
     def addr(self):
@@ -132,7 +133,7 @@ class PeerProxy(object):
     def connection_complete(self, addr, socket):
         self._socket = socket
         self._setup_handshake_translator()
-        
+
         self._translator.tx_handshake(0, self._info_hash, self._peer_id)
         self._state = self._States.Handshake_Initiated
 
@@ -148,7 +149,7 @@ class PeerProxy(object):
 
     def rx_handshake(self, reserved, info_hash, peer_id):
         if self._state == self._States.Handshake_Initiated:
-            if info_hash != self._info_hash: 
+            if info_hash != self._info_hash:
                 self._drop_connection()
             else:
                 self._translator.unset_receiver()
@@ -157,7 +158,7 @@ class PeerProxy(object):
                 self._translator = PeerWireTranslator()
                 self._translator.set_readerwriter(self._socketreaderwriter)
                 self._translator.set_receiver(self)
-                self._state = self._States.Bitfield_Allowed 
+                self._state = self._States.Bitfield_Allowed
 
                 self._translator.tx_bitfield(self._client.get_bitfield())
 
@@ -252,5 +253,3 @@ class PeerProxy(object):
     def cancel(self, index, begin, length):
         if self._valid_tx_state():
             self._translator.tx_cancel(index, begin, length)
-
-
