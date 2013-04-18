@@ -415,6 +415,8 @@ class TorrentMgr(object):
                                               self._tick, retries+1)
                     self._request(peer)
                 else:
+                    logger.debug("Giving up on peer {}"
+                                 .format(str(peer.addr())))
                     self._partial.append((index, offset, sha1))
                     del self._requesting[peer]
                     peer.not_interested()
