@@ -146,7 +146,7 @@ class TorrentMgr(object):
         del self._bitfields[peer]
 
         if peer in self._interested:
-            del self._interested
+            del self._interested[peer]
         elif peer in self._requesting:
             # If the peer is in the middle of downloading a piece, save
             # the state in the partial list
