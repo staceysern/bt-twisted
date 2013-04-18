@@ -8,7 +8,7 @@ This version of the client implements downloading but not uploading.  It can han
 Invocation
 ----------
 
-python client.py 
+python client.py filename ...
 
 Unit Tests
 ----------

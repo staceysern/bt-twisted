@@ -38,7 +38,6 @@ from bitstring import BitArray
 from filemgr import FileMgr
 from metainfo import Metainfo
 from peerproxy import PeerProxy
-from reactor import Reactor
 from trackerproxy import TrackerError
 from trackerproxy import TrackerProxy
 
@@ -54,10 +53,11 @@ class TorrentMgrError(Exception):
 
 
 class TorrentMgr(object):
-    def __init__(self, filename, port, peer_id):
+    def __init__(self, filename, port, peer_id, reactor):
         self._filename = filename
         self._port = port
         self._peer_id = peer_id
+        self._reactor = reactor
 
         # _peers is a list of peers that the TorrentMgr is trying
         # to communicate with
@@ -114,8 +114,7 @@ class TorrentMgr(object):
         # bytes.
         self._partial = []
 
-        self._reactor = Reactor()
-        self._reactor.schedule_timer(_TIMER_INTERVAL, self)
+        self._reactor.callLater(_TIMER_INTERVAL, self.timer_event)
         self._tick = 1
 
         print "Starting to serve torrent {}".format(filename)
@@ -128,7 +127,7 @@ class TorrentMgr(object):
         addrs = self._tracker_proxy.get_peers(n)
         for addr in addrs:
             peer = PeerProxy(self, self._peer_id, (addr['ip'], addr['port']),
-                             info_hash=self._metainfo.info_hash)
+                             self._reactor, info_hash=self._metainfo.info_hash)
             self._peers.append(peer)
             self._bitfields[peer] = BitArray(self._metainfo.num_pieces)
 
@@ -332,7 +331,7 @@ class TorrentMgr(object):
     def peer_sent_block(self, peer, index, begin, buf):
         if not peer in self._requesting:
             # If a peer is very slow in responding, a block could come after
-            # it has timed out.  Just ignore the data at this point and 
+            # it has timed out.  Just ignore the data at this point and
             # ignore the slow peer
             logger.debug("Received block from peer {} which has timed out"
                          .format(str(peer.addr())))
@@ -389,7 +388,7 @@ class TorrentMgr(object):
     # Reactor callback
 
     def timer_event(self):
-        self._reactor.schedule_timer(_TIMER_INTERVAL, self)
+        self._reactor.callLater(_TIMER_INTERVAL, self.timer_event)
         self._tick += 1
 
         # For any peers that have been interested but unchoked for an

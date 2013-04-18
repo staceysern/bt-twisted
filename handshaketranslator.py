@@ -2,9 +2,9 @@
 The HandshakeTranslator translates a stream of bytes into higher level messages
 and vice versa related to the handshake between BitTorrent peers.  The bytes
 are exchanged with a readerwriter and the higher level messages are exchanged
-with a receiver.  The creator of the HandshakeTranslator must subsequently
-provide it with a readerwriter using the set_readerwriter() method.  When it
-no longer needs the HandshakeTranslator, it should call the
+with a receiver.  The creator of the HandshakeTranslator must provide it with a
+readerwriter upon creation or subsequently using the set_readerwriter() method.
+When it no longer needs the HandshakeTranslator, it should call the
 unset_readerwriter() method so that all references to the HandshakeTranslator
 can be released and it can be properly garbage collected.
 
@@ -29,9 +29,6 @@ A readerwriter must implement set_receiver(), unset_receiver() and tx_bytes()
 Right now, the HandshakeTranslor reports the handshake after it has received
 the peer_id but documentation seems to indicate it should do this right after
 receiving the info_hash.
-
-Would it make sense to make a Translator base class with common code which all
-the actual translators would inherit from?
 """
 
 import logging
@@ -48,7 +45,7 @@ class HandshakeTranslator(object):
     class _States(object):
         Length, Protocol, Rest = range(3)
 
-    def __init__(self):
+    def __init__(self, receiver=None, readerwriter=None):
         self._buffer = bytearray(_BUFFER_SIZE)
         self._view = memoryview(self._buffer)
 
@@ -56,8 +53,15 @@ class HandshakeTranslator(object):
         self._bytes_needed = _LENGTH_LEN
         self._bytes_received = 0
 
-        self._receiver = None
-        self._readerwriter = None
+        if receiver:
+            self.set_receiver(receiver)
+        else:
+            self._receiver = None
+
+        if readerwriter:
+            self.set_readerwriter(readerwriter)
+        else:
+            self._readerwriter = None
 
     def set_receiver(self, receiver):
         self._receiver = receiver
