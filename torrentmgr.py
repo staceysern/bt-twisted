@@ -121,6 +121,10 @@ class TorrentMgr(object):
 
         self._connect_to_peers(20)
 
+    def percent(self):
+        return 100 * (1 - (len(self._needed) /
+                           float(self._metainfo.num_pieces)))
+
     def _connect_to_peers(self, n):
         # Get addresses of n peers from the tracker and try to establish
         # a connection with each
@@ -356,10 +360,8 @@ class TorrentMgr(object):
                     logger.info("Successfully got piece {} from {}"
                                 .format(index, str(peer.addr())))
                     del self._needed[index]
-                    percent = 100 * (1 - (len(self._needed) /
-                                          float(self._metainfo.num_pieces)))
                     print "{0}: Downloaded {1:1.4f}%".format(self._filename,
-                                                             percent)
+                                                             self.percent())
                     self._have[index] = 1
                 else:
                     logger.info("Unsuccessfully got piece {} from {}"

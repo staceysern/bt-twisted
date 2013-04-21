@@ -1,4 +1,5 @@
 Twisted==13.0.0
+ampy==1.2.6
 bencode==1.0
 bitstring==3.1.0
 bottle==0.11.6
