@@ -1,7 +1,7 @@
 """
 The ControlServerFactory creates a ControlServer for each new AMP control
 channel connection.  The ControlServer handles incoming messages by passing
-them off to the client for processing and then sending the appropriate 
+them off to the client for processing and then sending the appropriate
 response or error message.
 """
 

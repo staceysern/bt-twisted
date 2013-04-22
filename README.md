@@ -18,7 +18,7 @@ python console.py
 Console Commands
 ----------------
 
-add [-h] file  
+add [-h] [-n nickname] file  
 status [-h] key  
 quit  
 

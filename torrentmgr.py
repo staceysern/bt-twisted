@@ -2,7 +2,8 @@
 The TorrentMgr manages downloading and uploading for a torrent specified by a
 metafile.  The TorrentMgr gets the metafile information and initializes itself
 to reflect whether pieces of the torrent are already on disk (not implemented).
-Then it communicates with the tracker to get the addresses of peers.
+After being told to start, it communicates with the tracker to get the
+addresses of peers.
 
 The TorrentMgr determines the strategy of whom to contact for which pieces
 including end game strategy.  It also manages the amount of download and
@@ -114,10 +115,11 @@ class TorrentMgr(object):
         # bytes.
         self._partial = []
 
+    def start(self):
         self._reactor.callLater(_TIMER_INTERVAL, self.timer_event)
         self._tick = 1
 
-        print "Starting to serve torrent {}".format(filename)
+        print "Starting to serve torrent {}".format(self._filename)
 
         self._connect_to_peers(20)
 

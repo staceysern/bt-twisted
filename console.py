@@ -4,8 +4,8 @@ accepts commands from the user and communicates with the BitTorrent client
 using AMP messages over the control channel on localhost:1060.
 
 User commands:
-add [-h] metafile
-status [-h] metafile
+add [-h] [-n nickname] filename
+status [-h] key
 quit
 """
 
@@ -16,6 +16,7 @@ from argparse import ArgumentParser
 from cmd import Cmd
 
 # Control channel message definitions in ampy format
+
 
 class MsgError:
     pass
@@ -47,10 +48,14 @@ class Console(Cmd):
         self.addparser = ArgumentParser('add')
         self.addparser.add_argument('filename', action='store',
                                     help="metainfo filename")
+        self.addparser.add_argument('-n', action='store',
+                                    help="nickname", metavar="nickname")
 
         self.statusparser = ArgumentParser('status')
         self.statusparser.add_argument('key', action='store',
-                                       help="20 character hash")
+                                       help="key or nickname")
+
+        self.nicknames = {}
 
         self.proxy = ampy.Proxy('localhost', 1060)
         try:
@@ -66,6 +71,11 @@ class Console(Cmd):
             return
 
         filename = result['filename']
+        nickname = result['n'] if 'n' in result else ''
+
+        if nickname in self.nicknames:
+            print "Nickname {} already in use".format(nickname)
+            return
 
         try:
             result = self.proxy.callRemote(MsgAdd, filename=filename)
@@ -73,7 +83,10 @@ class Console(Cmd):
             print err.message
             return
 
-        print "Adding {} (key: {})".format(filename, result['key']) 
+        if nickname:
+            self.nicknames[nickname] = result['key']
+
+        print "Adding {} (key: {})".format(filename, result['key'])
 
     def do_status(self, args):
         try:
@@ -82,6 +95,8 @@ class Console(Cmd):
             return
 
         key = result['key']
+        if key in self.nicknames:
+            key = self.nicknames[key]
 
         try:
             result = self.proxy.callRemote(MsgStatus, key=key)

@@ -25,6 +25,8 @@ from twisted.internet import reactor
 logging.config.fileConfig('logging.conf')
 logger = logging.getLogger('bt')
 
+_AMP_CONTROL_PORT = 1060
+
 
 class BitTorrentClient(object):
     def __init__(self, reactor, filenames):
@@ -37,14 +39,15 @@ class BitTorrentClient(object):
         self._port = 6881
 
         # Set up a control channel
-        d = (TCP4ServerEndpoint(reactor, 1060, 5, 'localhost')
+        d = (TCP4ServerEndpoint(reactor, _AMP_CONTROL_PORT, 5, 'localhost')
              .listen(ControlServerFactory(self)))
 
         @d.addErrback
         def cannotListen(failure):
             # Schedule a clean program exit for after the reactor is running
             self._reactor.callLater(.01, self.quit)
-            logger.critical("Cannot listen on control port localhost:1060")
+            logger.critical("Cannot listen on control port localhost:{}"
+                            .format(_AMP_CONTROL_PORT))
 
         # Schedule any torrents named on the command line to be added after
         # the reactor is running
@@ -55,33 +58,28 @@ class BitTorrentClient(object):
 
     # Control channel functions
 
-    def _key(self, filename):
-        key = filename
-        if key.endswith(".torrent"):
-            key = key[:-8]
-        return key
-
     def add_torrent(self, filename):
-        key = self._key(filename)
-
-        if key in self._torrents:
-            raise commands.MsgError("Already serving " + filename)
-
         try:
             torrent = TorrentMgr(filename, self._port, self._peer_id,
                                  self._reactor)
         except TorrentMgrError as err:
             raise commands.MsgError(err.message)
 
-        self._torrents[torrent.info_hash()] = torrent
-        self._torrents[key] = torrent
-        return key 
+        info_hash = torrent.info_hash().encode('hex')
+        if info_hash in self._torrents:
+            raise commands.MsgError("Already serving {} (key: {})"
+                                    .format(filename, info_hash))
+
+        torrent.start()
+
+        self._torrents[info_hash] = torrent
+        return info_hash
 
     def get_status(self, key):
         if key in self._torrents:
             status = "{0:1.4f}".format(self._torrents[key].percent())
         else:
-            raise commands.MsgError("Not serving {}".format(key))
+            raise commands.MsgError("Invalid key: {}".format(key))
         return status
 
     def quit(self):
