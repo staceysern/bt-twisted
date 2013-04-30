@@ -17,7 +17,6 @@ import time
 
 from controlserver import ControlServerFactory
 from torrentmgr import TorrentMgr
-from torrentmgr import TorrentMgrError
 
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet import reactor
@@ -42,12 +41,12 @@ class BitTorrentClient(object):
         d = (TCP4ServerEndpoint(reactor, _AMP_CONTROL_PORT, 5, 'localhost')
              .listen(ControlServerFactory(self)))
 
-        @d.addErrback
         def cannotListen(failure):
             # Schedule a clean program exit for after the reactor is running
             self._reactor.callLater(.01, self.quit)
             logger.critical("Cannot listen on control port localhost:{}"
                             .format(_AMP_CONTROL_PORT))
+        d.addErrback(cannotListen)
 
         # Schedule any torrents named on the command line to be added after
         # the reactor is running
@@ -59,28 +58,39 @@ class BitTorrentClient(object):
     # Control channel functions
 
     def add_torrent(self, filename):
-        try:
-            torrent = TorrentMgr(filename, self._port, self._peer_id,
-                                 self._reactor)
-        except TorrentMgrError as err:
-            raise commands.MsgError(err.message)
+        """
+        Returns a deferred which eventually fires with the info_hash of the
+        torrent specified by the filename.
+        """
+        torrent = TorrentMgr(filename, self._port, self._peer_id,
+                             self._reactor)
 
-        info_hash = torrent.info_hash().encode('hex')
+        def success(value):
+            info_hash = torrent.info_hash().encode('hex')
+            if info_hash in self._torrents:
+                raise commands.MsgError("Already serving {} (key: {})"
+                                        .format(filename, info_hash))
+
+            torrent.start()
+
+            self._torrents[info_hash] = torrent
+            return info_hash
+
+        def failure(failure):
+            raise commands.MsgError(failure.value.message)
+
+        return torrent.initialize().addCallbacks(success, failure)
+
+    def get_status(self, info_hash):
+        """
+        Returns a dictionary of status items related to the torrent specified
+        by the supplied info_hash
+        """
         if info_hash in self._torrents:
-            raise commands.MsgError("Already serving {} (key: {})"
-                                    .format(filename, info_hash))
-
-        torrent.start()
-
-        self._torrents[info_hash] = torrent
-        return info_hash
-
-    def get_status(self, key):
-        if key in self._torrents:
-            status = "{0:1.4f}".format(self._torrents[key].percent())
+            return {'percent': "{0:1.4f}"
+                               .format(self._torrents[info_hash].percent())}
         else:
-            raise commands.MsgError("Invalid key: {}".format(key))
-        return status
+            raise commands.MsgError("Invalid key: {}".format(info_hash))
 
     def quit(self):
         logger.info("Quitting BitTorrent Client")

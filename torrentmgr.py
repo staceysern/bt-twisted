@@ -1,9 +1,11 @@
 """
 The TorrentMgr manages downloading and uploading for a torrent specified by a
-metafile.  The TorrentMgr gets the metafile information and initializes itself
-to reflect whether pieces of the torrent are already on disk (not implemented).
-After being told to start, it communicates with the tracker to get the
-addresses of peers.
+metafile.  After being created, the TorrentMgr must be told to initialize,
+whereupon it gets the metafile information and initializes itself to reflect
+whether pieces of the torrent are already on disk (not implemented) and
+initiates contact with the tracker.  After being told to start, it begins
+to field requests for uploads (not implemented) and, if the torrent is not
+fully downloaded, starts contacting peers to get needed pieces.
 
 The TorrentMgr determines the strategy of whom to contact for which pieces
 including end game strategy.  It also manages the amount of download and
@@ -39,8 +41,9 @@ from bitstring import BitArray
 from filemgr import FileMgr
 from metainfo import Metainfo
 from peerproxy import PeerProxy
-from trackerproxy import TrackerError
 from trackerproxy import TrackerProxy
+
+from twisted.internet.defer import Deferred
 
 logger = logging.getLogger('bt.torrentmgr')
 
@@ -54,11 +57,40 @@ class TorrentMgrError(Exception):
 
 
 class TorrentMgr(object):
+    class _States(object):
+        (Uninitialized, Initialized, Started) = range(3)
+
     def __init__(self, filename, port, peer_id, reactor):
         self._filename = filename
         self._port = port
         self._peer_id = peer_id
         self._reactor = reactor
+        self._state = self._States.Uninitialized
+
+    def initialize(self):
+        """
+        initialize() returns a deferred which fires when initialization
+        of the TorrentMgr is complete or an error has occurred.
+        """
+        if not self._state == self._States.Uninitialized:
+            error = "TorrentMgr can't be reinitialized"
+            logger.debug(error)
+            d = Deferred()
+            d.errback(TorrentMgrError(error))
+            return d
+
+        try:
+            self._metainfo = Metainfo(self._filename)
+        except ValueError as err:
+            logger.error(err)
+            d = Deferred()
+            d.errback(TorrentMgrError(err.message))
+            return d
+        except IOError as err:
+            logger.error(err)
+            d = Deferred()
+            d.errback(TorrentMgrError(err.strerror))
+            return d
 
         # _peers is a list of peers that the TorrentMgr is trying
         # to communicate with
@@ -68,25 +100,10 @@ class TorrentMgr(object):
         # each has
         self._bitfields = {}
 
-        try:
-            self._metainfo = Metainfo(filename)
-        except (IOError, ValueError) as err:
-            logger.error(err)
-            raise TorrentMgrError(err.strerror)
-
         # _have is the bitfield for this torrent. It is initialized to reflect
         # which pieces are already available on disk.
         self._filemgr = FileMgr(self._metainfo)
         self._have = self._filemgr.have()
-
-        try:
-            self._tracker_proxy = TrackerProxy(self._metainfo, self._port,
-                                               self._peer_id)
-        except TrackerError as err:
-            logger.critical("Could not connect to tracker at {}"
-                            .format(self._metainfo.announce))
-            logger.debug("    TrackerError: {}".format(err.message))
-            raise TorrentMgrError(err.message)
 
         # _needed is a dictionary of pieces which are still needed.
         # The value for each piece is a tuple of the number of peers which
@@ -115,27 +132,63 @@ class TorrentMgr(object):
         # bytes.
         self._partial = []
 
+        self._tracker_proxy = TrackerProxy(self._metainfo, self._port,
+                                           self._peer_id)
+
+        def success(result):
+            self._state = self._States.Initialized
+
+        def failure(failure):
+            logger.critical("Could not connect to tracker at {}"
+                            .format(self._metainfo.announce))
+            message = failure.value.message
+            logger.debug("    Tracker Error: {}".format(message))
+            raise TorrentMgrError(message)
+
+        return self._tracker_proxy.start().addCallbacks(success, failure)
+
     def start(self):
+        if not self._state == self._States.Initialized:
+            raise TorrentMgrError("TorrentMgr must be initialized to be "
+                                  "started")
+
         self._reactor.callLater(_TIMER_INTERVAL, self.timer_event)
         self._tick = 1
 
+        logger.info("Starting to serve torrent {}".format(self._filename))
         print "Starting to serve torrent {}".format(self._filename)
+
+        self._state = self._States.Started
 
         self._connect_to_peers(20)
 
     def percent(self):
-        return 100 * (1 - (len(self._needed) /
-                           float(self._metainfo.num_pieces)))
+        if not self._state == self._States.Uninitialized:
+            return 100 * (1 - (len(self._needed) /
+                               float(self._metainfo.num_pieces)))
+        else:
+            raise TorrentMgrError("Can't get percent on uninitialized "
+                                  "TorrentMgr")
+
+    def info_hash(self):
+        if not self._state == self._States.Uninitialized:
+            return self._metainfo.info_hash
+        else:
+            raise TorrentMgrError("Can't get hash on uninitialized "
+                                  "TorrentMgr")
 
     def _connect_to_peers(self, n):
         # Get addresses of n peers from the tracker and try to establish
         # a connection with each
-        addrs = self._tracker_proxy.get_peers(n)
-        for addr in addrs:
-            peer = PeerProxy(self, self._peer_id, (addr['ip'], addr['port']),
-                             self._reactor, info_hash=self._metainfo.info_hash)
-            self._peers.append(peer)
-            self._bitfields[peer] = BitArray(self._metainfo.num_pieces)
+
+        def handle_addrs(addrs):
+            for addr in addrs:
+                peer = PeerProxy(self, self._peer_id,
+                                 (addr['ip'], addr['port']), self._reactor,
+                                 info_hash=self._metainfo.info_hash)
+                self._peers.append(peer)
+                self._bitfields[peer] = BitArray(self._metainfo.num_pieces)
+        self._tracker_proxy.get_peers(n).addCallback(handle_addrs)
 
     def _remove_peer(self, peer):
         # Clean up references to the peer in various data structures
@@ -258,9 +311,6 @@ class TorrentMgr(object):
         else:
             return self._length_of_piece(index) - offset
 
-    def info_hash(self):
-        return self._metainfo.info_hash
-
     # PeerProxy callbacks
 
     def get_bitfield(self):
@@ -359,14 +409,14 @@ class TorrentMgr(object):
                 # On receipt of the last block in the piece, verify the hash
                 # and update the records to reflect receipt of the piece
                 if sha1.digest() == self._metainfo.piece_hash(index):
-                    logger.info("Successfully got piece {} from {}"
+                    logger.info("Successfully received piece {} from {}"
                                 .format(index, str(peer.addr())))
                     del self._needed[index]
                     print "{0}: Downloaded {1:1.4f}%".format(self._filename,
                                                              self.percent())
                     self._have[index] = 1
                 else:
-                    logger.info("Unsuccessfully got piece {} from {}"
+                    logger.info("Unsuccessfully received piece {} from {}"
                                 .format(index, str(peer.addr())))
                 del self._requesting[peer]
 
