@@ -32,6 +32,8 @@ class Metainfo(object):
                 or 'name' not in info):
             raise ValueError("Invalid BitTorrent metainfo file format")
 
+        self._name = info['name']
+
         try:
             if 'length' in info:
                 # Single file mode
@@ -108,3 +110,7 @@ class Metainfo(object):
     @property
     def info_hash(self):
         return self._hash
+
+    @property
+    def name(self):
+        return self._name

@@ -1,6 +1,6 @@
 """
-The ControlServerFactory creates a ControlServer for each new AMP control
-channel connection.  The ControlServer handles incoming messages by passing
+The AMPControlServerFactory creates a AMPControlServer for each new AMP control
+channel connection.  The AMPControlServer handles incoming messages by passing
 them off to the client for processing and then sending the appropriate
 response or error message.
 """
@@ -11,14 +11,14 @@ from twisted.internet.protocol import Factory
 from twisted.protocols.amp import AMP
 
 
-class ControlServer(AMP):
+class AMPControlServer(AMP):
     def __init__(self, client):
         self._client = client
 
     @commands.MsgAdd.responder
     def add(self, filename):
         try:
-            key = self._client.add_torrent(filename)
+            key, _ = self._client.add_torrent(filename)
         except Exception as err:
             raise commands.MsgError(err.message)
 
@@ -39,9 +39,9 @@ class ControlServer(AMP):
         return dict()
 
 
-class ControlServerFactory(Factory):
+class AMPControlServerFactory(Factory):
     def __init__(self, client):
         self._client = client
 
     def buildProtocol(self, addr):
-        return ControlServer(self._client)
+        return AMPControlServer(self._client)

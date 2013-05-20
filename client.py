@@ -9,13 +9,14 @@ delayed calls to start serving the torrents specified on the command line
 and then starts the reactor.
 """
 
-import commands
 import logging
 import logging.config
 import sys
 import time
 
-from controlserver import ControlServerFactory
+from ampcontrolserver import AMPControlServerFactory
+from commands import MsgError
+from httpcontrolserver import HTTPControlServer
 from torrentmgr import TorrentMgr
 from torrentmgr import TorrentMgrError
 
@@ -38,9 +39,9 @@ class BitTorrentClient(object):
         # Send a placeholder for now until the Acceptor is available
         self._port = 6881
 
-        # Set up a control channel
+        # Set up an amp control channel
         d = (TCP4ServerEndpoint(reactor, _AMP_CONTROL_PORT, 5, 'localhost')
-             .listen(ControlServerFactory(self)))
+             .listen(AMPControlServerFactory(self)))
 
         @d.addErrback
         def cannotListen(failure):
@@ -54,35 +55,63 @@ class BitTorrentClient(object):
         for filename in sys.argv[1:]:
             self._reactor.callLater(.01, self.add_torrent, (filename))
 
-        self._reactor.run()
+        # The following call starts the reactor
+        HTTPControlServer(self).app.run('localhost', 8080)
 
     # Control channel functions
 
+    def get_torrents(self):
+        """
+        Returns a dictionary of information about torrents the client is
+        handling keyed by the info hash.
+        """
+        return {info_hash: {'name': self._torrents[info_hash].name(),
+                            'percent': self.get_status(info_hash)}
+                for info_hash in self._torrents}
+
     def add_torrent(self, filename):
+        """
+        Attempts to start handling the torrent represented by the supplied
+        metainfo file.  Raises a MsgError exception for any error condition.
+        Otherwise, returns the info hash and name of the torrent.
+        """
         try:
             torrent = TorrentMgr(filename, self._port, self._peer_id,
                                  self._reactor)
         except TorrentMgrError as err:
-            raise commands.MsgError(err.message)
+            logger.debug(err.message)
+            raise MsgError(err.message)
 
         info_hash = torrent.info_hash().encode('hex')
         if info_hash in self._torrents:
-            raise commands.MsgError("Already serving {} (key: {})"
-                                    .format(filename, info_hash))
+            logger.debug("Already serving {} (key: {})"
+                         .format(filename, info_hash))
+            raise MsgError("Already serving {} (key: {})"
+                           .format(filename, info_hash))
 
         torrent.start()
 
         self._torrents[info_hash] = torrent
-        return info_hash
+        return info_hash, torrent.name()
 
     def get_status(self, key):
+        """
+        Returns status information about the torrent with the info hash equal
+        to the specified key.  Raises a MsgError exception if the key is
+        invalid.  Currently, the only information returned about the torrent is
+        the percent downloaded.
+        """
         if key in self._torrents:
             status = "{0:1.4f}".format(self._torrents[key].percent())
         else:
-            raise commands.MsgError("Invalid key: {}".format(key))
+            logger.debug("Invalid key: {}".format(key))
+            raise MsgError("Invalid key: {}".format(key))
         return status
 
     def quit(self):
+        """
+        Stop the client by shutting down the reactor.
+        """
         logger.info("Quitting BitTorrent Client")
         self._reactor.stop()
 

@@ -1,0 +1,172 @@
+<!doctype html>
+<html>
+    <head>
+        <script src="jquery-1.9.1.js"></script> 
+        <script src="underscore.js"></script> 
+        <script>
+            function Torrent(filename, key) {
+                this.filename = filename
+                this.key = key
+                this.id = _.uniqueId('id_');
+                this.percent = undefined;
+                this.name = undefined
+                this.el = undefined;
+                this.lastpercent = 0;
+                this.boundary = 10;
+            }
+
+            function all() {
+                $.ajax({
+                    url: '/torrents',
+                    success: allResponse,
+                    error: allResponseFail
+                })
+            }
+
+            function allResponse(data) {
+                var alltorrents = JSON.parse(data);
+                _.each(_.pairs(alltorrents), function(pair) {
+                    var torrent = new Torrent()
+                    torrent.key = pair[0] 
+                    torrent.percent = pair[1].percent;
+                    torrent.lastpercent = parseFloat(pair[1].percent);
+                    if (torrent.lastpercent < 10) {
+                        torrent.boundary = 10 ;
+                    }
+                    else {
+                        torrent.boundary = 
+                            Math.floor((torrent.lastpercent+10)/10)*10;
+                    }
+                    console.log(torrent.boundary);
+                    torrent.name = pair[1].name;
+                    torrents[torrent.id] = torrent
+                    torrent.draw()
+                    torrent.status();
+                })
+            }
+
+            function allResponseFail() {}
+
+            Torrent.prototype.add = function() {
+                if (window.webkitNotifications.checkPermission() != 0) {
+                    window.webkitNotifications.requestPermission();
+                }
+                $.ajax({
+                    type: 'POST',
+                    url: '/add',
+                    data: { filename: this.filename,
+                            requestid: this.id 
+                          },
+                    dataType: 'json',
+                    success: this.addResponse.bind(this),
+                    error: this.addResponseFail.bind(this)
+                })
+            }
+
+            Torrent.prototype.addResponse = function(data) {
+                $('form[id=add]').find('input:text').val('')
+                this.key = data.key;
+                this.name = data.name;
+                this.status();
+                $('#errormsg')[0].innerHTML="";
+            };
+
+            Torrent.prototype.addResponseFail = function(data) {
+                var response = JSON.parse(data.responseText);
+                $('#errormsg')[0].innerHTML=this.filename+": "+response.message;
+                delete torrents[this.id];
+            };
+
+            Torrent.prototype.status = function(data) {
+                $.post('/status', { key: this.key }, 'json')
+                       .done(function(data) {
+                                 this.percent = data.percent;
+                                 this.draw()
+
+                                 var percent = parseFloat(this.percent)
+                                 if (this.lastPercent<this.boundary &&
+                                     percent>=this.boundary) {
+                                     notify(this.name, this.percent)
+                                     this.boundary = this.boundary+10
+                                 }
+                                 this.lastPercent = percent
+
+                             }.bind(this));
+            };
+    
+            Torrent.prototype.draw = function() {
+                if (this.el === undefined) {
+                    this.el = $('<li> <span class="percent"> </span>'+
+                    '<span class="name">'+this.name+'</span> </li>');
+                    this.el.appendTo('.statuses');
+                }
+                $('.percent', this.el).text(this.percent+'%');
+            }
+
+            var torrents = {}
+            var timer = undefined
+
+        $(document).ready(function() {
+            $('form[id=add]').find('input:text').focus()
+            all();            
+            $('#add').on('submit', function(e) {
+                e.preventDefault();
+                var torrent = new Torrent($('input[name="filename"]').val())
+                if (torrent.filename != "") {
+                    torrents[torrent.id] = torrent
+                    torrent.add()
+                }
+                $('form[id=add]').find('input:text').focus()
+            });
+            checkStatus();
+        });
+
+        function checkStatus() {
+            _.each(torrents, function(torrent) {
+                torrent.status();
+            });
+            timer = window.setTimeout(checkStatus, 1000);
+        }
+
+        function notify(name, percent) {
+            if (window.webkitNotifications.checkPermission() == 0) {
+                window.webkitNotifications.createNotification(
+                'BT_logo.png', name, percent+"% received").show();
+            } else {
+                window.webkitNotifications.requestPermission();
+            }
+        }
+
+        </script>
+        <style>
+            .statuses .filename {
+                font-weight: bold;
+            }
+            .statuses li {
+                list-style-type: none;
+            }
+            .percent, .name {
+                display: inline-block
+            }
+            .percent {
+                width: 100px;
+                text-align: right;
+                margin-right: 2em;
+            }
+            .name {
+                width: 500px;
+            }
+
+        </style>
+    </head>
+    <body>
+        <form id="add" method="post" action="/add">
+            <input type="text" name="filename">
+            <input type="submit" value="Add torrent">
+        </form>
+        <ul class="statuses">
+        </ul>
+        <div id="errormsg"></div>
+    </body>
+</html>
+

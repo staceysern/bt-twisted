@@ -70,9 +70,12 @@ class TorrentMgr(object):
 
         try:
             self._metainfo = Metainfo(filename)
-        except (IOError, ValueError) as err:
+        except IOError as err:
             logger.error(err)
             raise TorrentMgrError(err.strerror)
+        except ValueError as err:
+            logger.error(err)
+            raise TorrentMgrError(err.message)
 
         # _have is the bitfield for this torrent. It is initialized to reflect
         # which pieces are already available on disk.
@@ -126,6 +129,9 @@ class TorrentMgr(object):
     def percent(self):
         return 100 * (1 - (len(self._needed) /
                            float(self._metainfo.num_pieces)))
+
+    def name(self):
+        return self._metainfo.name
 
     def _connect_to_peers(self, n):
         # Get addresses of n peers from the tracker and try to establish
