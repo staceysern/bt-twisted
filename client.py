@@ -18,7 +18,6 @@ from ampcontrolserver import AMPControlServerFactory
 from commands import MsgError
 from httpcontrolserver import HTTPControlServer
 from torrentmgr import TorrentMgr
-from torrentmgr import TorrentMgrError
 
 from twisted.internet.endpoints import TCP4ServerEndpoint
 from twisted.internet import reactor
@@ -43,12 +42,12 @@ class BitTorrentClient(object):
         d = (TCP4ServerEndpoint(reactor, _AMP_CONTROL_PORT, 5, 'localhost')
              .listen(AMPControlServerFactory(self)))
 
-        @d.addErrback
         def cannotListen(failure):
             # Schedule a clean program exit for after the reactor is running
             self._reactor.callLater(.01, self.quit)
             logger.critical("Cannot listen on control port localhost:{}"
                             .format(_AMP_CONTROL_PORT))
+        d.addErrback(cannotListen)
 
         # Schedule any torrents named on the command line to be added after
         # the reactor is running
@@ -65,48 +64,53 @@ class BitTorrentClient(object):
         Returns a dictionary of information about torrents the client is
         handling keyed by the info hash.
         """
-        return {info_hash: {'name': self._torrents[info_hash].name(),
-                            'percent': self.get_status(info_hash)}
-                for info_hash in self._torrents}
+        torrents = {}
+        for info_hash in self._torrents:
+            status = self.get_status(info_hash)
+            torrents[info_hash] = {'name': self._torrents[info_hash].name(),
+                                   'percent': status['percent']}
+        return torrents
 
     def add_torrent(self, filename):
         """
-        Attempts to start handling the torrent represented by the supplied
-        metainfo file.  Raises a MsgError exception for any error condition.
-        Otherwise, returns the info hash and name of the torrent.
+        Returns a deferred which eventually fires with the info_hash and the
+        name of the torrent specified by the filename.  In case of failure,
+        a MsgError exception is raised.
         """
-        try:
-            torrent = TorrentMgr(filename, self._port, self._peer_id,
-                                 self._reactor)
-        except TorrentMgrError as err:
-            logger.debug(err.message)
-            raise MsgError(err.message)
+        torrent = TorrentMgr(filename, self._port, self._peer_id,
+                             self._reactor)
 
-        info_hash = torrent.info_hash().encode('hex')
+        def success(value):
+            info_hash = torrent.info_hash().encode('hex')
+            if info_hash in self._torrents:
+                logger.debug("Already serving {} (key: {})"
+                             .format(filename, info_hash))
+                raise MsgError("Already serving {} (key: {})"
+                               .format(filename, info_hash))
+
+            torrent.start()
+
+            self._torrents[info_hash] = torrent
+
+            return info_hash, torrent.name()
+
+        def failure(failure):
+            raise MsgError(failure.value.message)
+
+        return torrent.initialize().addCallbacks(success, failure)
+
+    def get_status(self, info_hash):
+        """
+        Returns a dictionary of status items related to the torrent specified
+        by the supplied info_hash.  Raises a MsgError exception if the info
+        hash is invalid.
+        """
         if info_hash in self._torrents:
-            logger.debug("Already serving {} (key: {})"
-                         .format(filename, info_hash))
-            raise MsgError("Already serving {} (key: {})"
-                           .format(filename, info_hash))
-
-        torrent.start()
-
-        self._torrents[info_hash] = torrent
-        return info_hash, torrent.name()
-
-    def get_status(self, key):
-        """
-        Returns status information about the torrent with the info hash equal
-        to the specified key.  Raises a MsgError exception if the key is
-        invalid.  Currently, the only information returned about the torrent is
-        the percent downloaded.
-        """
-        if key in self._torrents:
-            status = "{0:1.4f}".format(self._torrents[key].percent())
+            return {'percent': "{0:1.4f}"
+                               .format(self._torrents[info_hash].percent())}
         else:
-            logger.debug("Invalid key: {}".format(key))
-            raise MsgError("Invalid key: {}".format(key))
-        return status
+            logger.debug("Invalid key: {}".format(info_hash))
+            raise MsgError("Invalid key: {}".format(info_hash))
 
     def quit(self):
         """

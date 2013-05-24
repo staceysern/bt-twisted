@@ -17,12 +17,14 @@ class AMPControlServer(AMP):
 
     @commands.MsgAdd.responder
     def add(self, filename):
-        try:
-            key, _ = self._client.add_torrent(filename)
-        except Exception as err:
-            raise commands.MsgError(err.message)
+        def success((info_hash, name)):
+            return dict(key=info_hash)
 
-        return dict(key=key)
+        def failure(err):
+            raise commands.MsgError(err.value.message)
+
+        return (self._client.add_torrent(filename)
+                .addCallbacks(success, failure))
 
     @commands.MsgStatus.responder
     def get_status(self, key):
@@ -31,7 +33,7 @@ class AMPControlServer(AMP):
         except Exception as err:
             raise commands.MsgError(err.message)
 
-        return dict(percent=status)
+        return status
 
     @commands.MsgQuit.responder
     def quit(self):

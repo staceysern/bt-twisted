@@ -15,23 +15,36 @@
                 this.boundary = 10;
             }
 
-            function all() {
+            function getTorrents() {
+                // Request information about the torrents that the client is
+                // handling.
                 $.ajax({
                     url: '/torrents',
-                    success: allResponse,
-                    error: allResponseFail
+                    success: torrentsResponse,
+                    error: torrentsResponseFail
                 })
             }
 
-            function allResponse(data) {
+            function torrentsResponse(data) {
+                // This callback function is called on receipt of the response
+                // to the request for information about the torrents that the 
+                // client is handling.  
+                
+                // The data is a json formatted string representing a 
+                // dictionary with an entry for each torrent consisting of a
+                // key and a dictionary containing other information about the 
+                // torrent.  
                 var alltorrents = JSON.parse(data);
+
+                // For each torrent, a torrent object is created and
+                // information about the torrent is displayed. 
                 _.each(_.pairs(alltorrents), function(pair) {
                     var torrent = new Torrent()
                     torrent.key = pair[0] 
                     torrent.percent = pair[1].percent;
                     torrent.lastpercent = parseFloat(pair[1].percent);
                     if (torrent.lastpercent < 10) {
-                        torrent.boundary = 10 ;
+                        torrent.boundary = 10;
                     }
                     else {
                         torrent.boundary = 
@@ -41,16 +54,21 @@
                     torrent.name = pair[1].name;
                     torrents[torrent.id] = torrent
                     torrent.draw()
-                    torrent.status();
                 })
             }
 
-            function allResponseFail() {}
+            function torrentsResponseFail() {}
 
             Torrent.prototype.add = function() {
+                // Request the client to add the torrent represented by this
+                // object.  
+
+                // If the notification API doesn't have permission to show
+                // notifications, request permission.
                 if (window.webkitNotifications.checkPermission() != 0) {
                     window.webkitNotifications.requestPermission();
                 }
+
                 $.ajax({
                     type: 'POST',
                     url: '/add',
@@ -64,6 +82,10 @@
             }
 
             Torrent.prototype.addResponse = function(data) {
+                // This callback function is called on receipt of a response 
+                // from the client indicating the request to add this torrent 
+                // was successful.  The data from the response is added to 
+                // the torrent object. 
                 $('form[id=add]').find('input:text').val('')
                 this.key = data.key;
                 this.name = data.name;
@@ -72,17 +94,27 @@
             };
 
             Torrent.prototype.addResponseFail = function(data) {
+                // This callback function is called when the client indicates
+                // that the request to add this torrent failed.  An error 
+                // message is displayed and the torrent object is deleted
+                // from the list of torrents that the client is handling.
                 var response = JSON.parse(data.responseText);
                 $('#errormsg')[0].innerHTML=this.filename+": "+response.message;
                 delete torrents[this.id];
             };
 
             Torrent.prototype.status = function(data) {
+                // Request status information from the client
                 $.post('/status', { key: this.key }, 'json')
                        .done(function(data) {
+                                 // When the response has been received, 
+                                 // update the information for the torrent and
+                                 // update the display.
                                  this.percent = data.percent;
                                  this.draw()
 
+                                 // When the percent downloaded crosses a
+                                 // set boundary, issue a notification.
                                  var percent = parseFloat(this.percent)
                                  if (this.lastPercent<this.boundary &&
                                      percent>=this.boundary) {
@@ -95,6 +127,9 @@
             };
     
             Torrent.prototype.draw = function() {
+                // Display information about this torrent.  If there is not
+                // currently a list element corresponding to this torrent,
+                // create one first.
                 if (this.el === undefined) {
                     this.el = $('<li> <span class="percent"> </span>'+
                     '<span class="name">'+this.name+'</span> </li>');
@@ -107,8 +142,17 @@
             var timer = undefined
 
         $(document).ready(function() {
+            // This function is called when the DOM is fully loaded.
+
+            // Give the focus to the input box.
             $('form[id=add]').find('input:text').focus()
-            all();            
+
+            // Find out which torrents the client is currently handling.
+            getTorrents();            
+
+            // When the add button is pressed, create a new torrent object 
+            // populated with the contents of the input box as the filename
+            // and ask the client to add the torrent.
             $('#add').on('submit', function(e) {
                 e.preventDefault();
                 var torrent = new Torrent($('input[name="filename"]').val())
@@ -116,23 +160,37 @@
                     torrents[torrent.id] = torrent
                     torrent.add()
                 }
+
+                // Give the focus back to the input box.
                 $('form[id=add]').find('input:text').focus()
             });
+
+            // Start the cycle of periodic status checks.
             checkStatus();
         });
 
         function checkStatus() {
+            // Ask the client for the status of each torrent it is handling.
             _.each(torrents, function(torrent) {
-                torrent.status();
+                // Don't request status for torrents for which a response to 
+                // an add request hasn't been received.
+                if (torrent.key !== undefined) {
+                    torrent.status();
+                };
             });
+
+            // Set a timer to call this function again in one second.
             timer = window.setTimeout(checkStatus, 1000);
         }
 
         function notify(name, percent) {
+            // Issue a notification if the notification API has permission, 
+            // otherwise ask for permission.
             if (window.webkitNotifications.checkPermission() == 0) {
                 window.webkitNotifications.createNotification(
-                'BT_logo.png', name, percent+"% received").show();
-            } else {
+                    'logo.png', name, percent+"% received").show();
+            } 
+            else {
                 window.webkitNotifications.requestPermission();
             }
         }

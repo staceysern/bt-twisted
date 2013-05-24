@@ -52,14 +52,19 @@ class HTTPControlServer(object):
 
         request.setHeader('Content-Type', 'application/json')
 
-        try:
-            (key, name) = self._client.add_torrent(filename)
-        except MsgError as err:
-            request.setResponseCode(400)
-            return json.dumps(dict(message=err.message,
+        def success((info_hash, name), request, requestid):
+            return json.dumps(dict(key=info_hash, name=name,
                                    requestid=requestid))
 
-        return json.dumps(dict(key=key, name=name, requestid=requestid))
+        def failure(err, request, requestid):
+            request.setResponseCode(400)
+            return json.dumps(dict(message=err.value.message,
+                                   requestid=requestid))
+
+        return (self._client.add_torrent(filename)
+                .addCallbacks(success, failure,
+                              callbackArgs=(request, requestid),
+                              errbackArgs=(request, requestid)))
 
     @app.route('/status')
     def status(self, request):
@@ -75,12 +80,12 @@ class HTTPControlServer(object):
         request.setHeader('Content-Type', 'application/json')
 
         try:
-            percent = self._client.get_status(key)
+            status = self._client.get_status(key)
         except MsgError as err:
             request.setResponseCode(400)
             return json.dumps(dict(message=err.message))
 
-        return json.dumps(dict(percent=percent))
+        return json.dumps(status)
 
     @app.route('/quit', methods=['POST'])
     def quit(self, request):
