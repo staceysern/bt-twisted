@@ -3,6 +3,7 @@ ampy==1.2.6
 bencode==1.0
 bitstring==3.1.0
 bottle==0.11.6
+klein==0.2.0
 mock==1.0.1
 py==1.4.12
 pytest==2.3.4
