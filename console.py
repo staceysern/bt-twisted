@@ -47,7 +47,7 @@ class Console(Cmd):
 
         self.addparser = ArgumentParser('add')
         self.addparser.add_argument('filename', action='store',
-                                    help="metainfo filename")
+                                    help="filename")
         self.addparser.add_argument('-n', action='store',
                                     help="nickname", metavar="nickname")
 
