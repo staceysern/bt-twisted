@@ -235,7 +235,7 @@ class TorrentMgr(object):
     def _check_interest(self, peer):
         # If the peer is not already interested or requesting, identify a piece
         # for it to download and show interest to the peer.
-        if not peer in self._interested and not peer in self._requesting:
+        if peer not in self._interested and peer not in self._requesting:
             # Compute the set of needed pieces which the peer has that are not
             # already designated for another peer
             needed = self._have.copy()
@@ -258,7 +258,7 @@ class TorrentMgr(object):
                         return
 
                 for _, _, index in self._rarest():
-                    if index in of_interest and not index in dont_consider:
+                    if index in of_interest and index not in dont_consider:
                         self._interested[peer] = (index, 0, hashlib.sha1(),
                                                   self._tick)
                         self._show_interest(peer)
@@ -267,7 +267,7 @@ class TorrentMgr(object):
             # If there is no further piece for a peer which was previously
             # interested to download, make it not interested and connect to
             # another peer
-            if not peer in self._interested and peer.is_interested():
+            if peer not in self._interested and peer.is_interested():
                 logger.debug("Expressing lack of interest in peer {}"
                              .format(str(peer.addr())))
                 peer.not_interested()
@@ -292,7 +292,7 @@ class TorrentMgr(object):
 
     def _length_of_last_piece(self):
         return (self._metainfo.total_length -
-               (self._metainfo.num_pieces-1)*self._metainfo.piece_length)
+                (self._metainfo.num_pieces-1)*self._metainfo.piece_length)
 
     def _length_of_piece(self, index):
         if self._is_last_piece(index):
@@ -345,7 +345,7 @@ class TorrentMgr(object):
         for piece in pieces:
             if piece in self._needed:
                 occurences, peers = self._needed[piece]
-                if not peer in peers:
+                if peer not in peers:
                     peers.append(peer)
                     self._needed[piece] = (occurences+1, peers)
 
@@ -363,7 +363,7 @@ class TorrentMgr(object):
 
         if index in self._needed:
             occurences, peers = self._needed[index]
-            if not peer in peers:
+            if peer not in peers:
                 peers.append(peer)
                 self._needed[index] = (occurences+1, peers)
 
@@ -388,7 +388,7 @@ class TorrentMgr(object):
             self._request(peer)
 
     def peer_sent_block(self, peer, index, begin, buf):
-        if not peer in self._requesting:
+        if peer not in self._requesting:
             # If a peer is very slow in responding, a block could come after
             # it has timed out.  Just ignore the data at this point and
             # ignore the slow peer
