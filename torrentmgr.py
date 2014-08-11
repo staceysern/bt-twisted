@@ -72,7 +72,7 @@ class TorrentMgr(object):
         initialize() returns a deferred which fires when initialization
         of the TorrentMgr is complete or an error has occurred.
         """
-        if not self._state == self._States.Uninitialized:
+        if self._state != self._States.Uninitialized:
             error = "TorrentMgr can't be reinitialized"
             logger.debug(error)
             d = Deferred()
@@ -148,7 +148,7 @@ class TorrentMgr(object):
         return self._tracker_proxy.start().addCallbacks(success, failure)
 
     def start(self):
-        if not self._state == self._States.Initialized:
+        if self._state != self._States.Initialized:
             raise TorrentMgrError("TorrentMgr must be initialized to be "
                                   "started")
 
@@ -163,7 +163,7 @@ class TorrentMgr(object):
         self._connect_to_peers(20)
 
     def percent(self):
-        if not self._state == self._States.Uninitialized:
+        if self._state != self._States.Uninitialized:
             return 100 * (1 - (len(self._needed) /
                                float(self._metainfo.num_pieces)))
         else:
@@ -171,7 +171,7 @@ class TorrentMgr(object):
                                   "TorrentMgr")
 
     def info_hash(self):
-        if not self._state == self._States.Uninitialized:
+        if self._state != self._States.Uninitialized:
             return self._metainfo.info_hash
         else:
             raise TorrentMgrError("Can't get hash on uninitialized "
