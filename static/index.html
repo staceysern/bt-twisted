@@ -1,8 +1,8 @@
 <!doctype html>
 <html>
     <head>
-        <script src="jquery-1.9.1.js"></script> 
-        <script src="underscore.js"></script> 
+        <script src="jquery-1.9.1.js"></script>
+        <script src="underscore.js"></script>
         <script>
             function Torrent(filename, key) {
                 this.filename = filename
@@ -27,27 +27,27 @@
 
             function torrentsResponse(data) {
                 // This callback function is called on receipt of the response
-                // to the request for information about the torrents that the 
-                // client is handling.  
-                
-                // The data is a json formatted string representing a 
+                // to the request for information about the torrents that the
+                // client is handling.
+
+                // The data is a json formatted string representing a
                 // dictionary with an entry for each torrent consisting of a
-                // key and a dictionary containing other information about the 
-                // torrent.  
+                // key and a dictionary containing other information about the
+                // torrent.
                 var alltorrents = JSON.parse(data);
 
                 // For each torrent, a torrent object is created and
-                // information about the torrent is displayed. 
+                // information about the torrent is displayed.
                 _.each(_.pairs(alltorrents), function(pair) {
                     var torrent = new Torrent()
-                    torrent.key = pair[0] 
+                    torrent.key = pair[0]
                     torrent.percent = pair[1].percent;
                     torrent.lastpercent = parseFloat(pair[1].percent);
                     if (torrent.lastpercent < 10) {
                         torrent.boundary = 10;
                     }
                     else {
-                        torrent.boundary = 
+                        torrent.boundary =
                             Math.floor((torrent.lastpercent+10)/10)*10;
                     }
                     console.log(torrent.boundary);
@@ -61,19 +61,25 @@
 
             Torrent.prototype.add = function() {
                 // Request the client to add the torrent represented by this
-                // object.  
+                // object.
 
-                // If the notification API doesn't have permission to show
-                // notifications, request permission.
-                if (window.webkitNotifications.checkPermission() != 0) {
-                    window.webkitNotifications.requestPermission();
+                // If the browser supports notifications try to get permission
+                if ("Notification" in window) {
+                    if (Notification.permission !== "granted" &&
+                        Notification.permission !== "denied") {
+                        Notification.requestPermission(function (permission) {
+                            if(!('permission' in Notification)) {
+                                Notification.permission = permission;
+                            }
+                        });
+                    }
                 }
 
                 $.ajax({
                     type: 'POST',
                     url: '/add',
                     data: { filename: this.filename,
-                            requestid: this.id 
+                            requestid: this.id
                           },
                     dataType: 'json',
                     success: this.addResponse.bind(this),
@@ -82,10 +88,10 @@
             }
 
             Torrent.prototype.addResponse = function(data) {
-                // This callback function is called on receipt of a response 
-                // from the client indicating the request to add this torrent 
-                // was successful.  The data from the response is added to 
-                // the torrent object. 
+                // This callback function is called on receipt of a response
+                // from the client indicating the request to add this torrent
+                // was successful.  The data from the response is added to
+                // the torrent object.
                 $('form[id=add]').find('input:text').val('')
                 this.key = data.key;
                 this.name = data.name;
@@ -95,7 +101,7 @@
 
             Torrent.prototype.addResponseFail = function(data) {
                 // This callback function is called when the client indicates
-                // that the request to add this torrent failed.  An error 
+                // that the request to add this torrent failed.  An error
                 // message is displayed and the torrent object is deleted
                 // from the list of torrents that the client is handling.
                 var response = JSON.parse(data.responseText);
@@ -107,7 +113,7 @@
                 // Request status information from the client
                 $.post('/status', { key: this.key }, 'json')
                        .done(function(data) {
-                                 // When the response has been received, 
+                                 // When the response has been received,
                                  // update the information for the torrent and
                                  // update the display.
                                  this.percent = data.percent;
@@ -125,7 +131,7 @@
 
                              }.bind(this));
             };
-    
+
             Torrent.prototype.draw = function() {
                 // Display information about this torrent.  If there is not
                 // currently a list element corresponding to this torrent,
@@ -148,9 +154,9 @@
             $('form[id=add]').find('input:text').focus()
 
             // Find out which torrents the client is currently handling.
-            getTorrents();            
+            getTorrents();
 
-            // When the add button is pressed, create a new torrent object 
+            // When the add button is pressed, create a new torrent object
             // populated with the contents of the input box as the filename
             // and ask the client to add the torrent.
             $('#add').on('submit', function(e) {
@@ -172,7 +178,7 @@
         function checkStatus() {
             // Ask the client for the status of each torrent it is handling.
             _.each(torrents, function(torrent) {
-                // Don't request status for torrents for which a response to 
+                // Don't request status for torrents for which a response to
                 // an add request hasn't been received.
                 if (torrent.key !== undefined) {
                     torrent.status();
@@ -184,14 +190,19 @@
         }
 
         function notify(name, percent) {
-            // Issue a notification if the notification API has permission, 
-            // otherwise ask for permission.
-            if (window.webkitNotifications.checkPermission() == 0) {
-                window.webkitNotifications.createNotification(
-                    'logo.png', name, percent+"% received").show();
-            } 
-            else {
-                window.webkitNotifications.requestPermission();
+            if ("Notification" in window) {
+                if (Notification.permission === "granted") {
+                    var notification = new Notification(
+                                               name+": "+percent+"% received",
+                                               {icon: 'logo.png'});
+                }
+                else if (Notification.permission !== "denied") {
+                    Notification.requestPermission(function (permission) {
+                        if(!('permission' in Notification)) {
+                            Notification.permission = permission;
+                        }
+                    });
+                }
             }
         }
 
@@ -227,4 +238,3 @@
         <div id="errormsg"></div>
     </body>
 </html>
-
