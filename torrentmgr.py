@@ -26,10 +26,10 @@ interested stays at the fixed number although it will temporarily exceed that
 number when a peer for whom there was no interest notifies the TorrentMgr
 that it has obtained a needed piece.
 
-Periodically, the TorrentMgr checks to over the peers that are interested and
-requesting to try to rectify potential hung situations such as when a peer is
-interested but unchoked for a long period of time or when it has an outstanding
-request over a long period of time.
+Periodically, the TorrentMgr checks the peers that are interested or requesting
+to try to rectify potential hung situations such as when a peer is interested
+but unchoked for a long period of time or when it has an outstanding request
+over a long period of time.
 
 This TorrentMgr does not currently implement pipelined requests, an endgame
 strategy or uploading.

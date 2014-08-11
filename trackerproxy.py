@@ -1,5 +1,5 @@
 """
-The TrackerProxy contacts the tracker specified in the supplied MetaInfo object
+The TrackerProxy contacts the tracker specified in the supplied Metainfo object
 and provides information about peers upon request.  After creation, the
 TrackerProxy must be told to start at which point it attempts to contact the
 tracker.  It raises a TrackerError if the tracker can't be contacted or
