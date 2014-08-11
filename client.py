@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
 The BitTorrentClient sets up necessary objects before starting the Twisted
 reactor.  From there all other functions of the BitTorrent client are event
