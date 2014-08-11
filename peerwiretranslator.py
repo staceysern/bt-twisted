@@ -59,12 +59,12 @@ class PeerWireTranslator(object):
         self._length_view = memoryview(self._length_buf)
         self._length_state_setup()
 
-        if receiver:
+        if receiver is not None:
             self.set_receiver(receiver)
         else:
             self._receiver = None
 
-        if readerwriter:
+        if readerwriter is not None:
             self.set_readerwriter(readerwriter)
         else:
             self._readerwriter = None
@@ -133,82 +133,82 @@ class PeerWireTranslator(object):
                 self._length_state_setup()
 
     def rx_keep_alive(self):
-        if self._receiver:
+        if self._receiver is not None:
             self._receiver.rx_keep_alive()
 
     def rx_choke(self):
-        if self._receiver:
+        if self._receiver is not None:
             self._receiver.rx_choke()
 
     def rx_unchoke(self):
-        if self._receiver:
+        if self._receiver is not None:
             self._receiver.rx_unchoke()
 
     def rx_interested(self):
-        if self._receiver:
+        if self._receiver is not None:
             self._receiver.rx_interested()
 
     def rx_not_interested(self):
-        if self._receiver:
+        if self._receiver is not None:
             self._receiver.rx_not_interested()
 
     def rx_have(self):
-        if self._receiver:
+        if self._receiver is not None:
             (index,) = struct.unpack(">I", buffer(self._current_buf[1:5]))
             self._receiver.rx_have(index)
 
     def rx_bitfield(self):
-        if self._receiver:
+        if self._receiver is not None:
             bits = BitArray(bytes=self._current_buf[1:self._bytes_received])
             self._receiver.rx_bitfield(bits)
 
     def rx_request(self):
-        if self._receiver:
+        if self._receiver is not None:
             buf = buffer(self._current_buf[1:])
             index, begin, length, = struct.unpack(">3I", buf)
             self._receiver.rx_request(index, begin, length)
 
     def rx_piece(self):
-        if self._receiver:
+        if self._receiver is not None:
             index, begin, = struct.unpack(">2I",
                                           buffer(self._current_buf[1:9]))
             self._receiver.rx_piece(index, begin,
                                     buffer(self._current_buf[9:]))
 
     def rx_cancel(self):
-        if self._receiver:
+        if self._receiver is not None:
             buf = buffer(self._current_buf[1:])
             index, begin, length, = struct.unpack(">3I", buf)
             self._receiver.rx_cancel(index, begin, length)
 
     def tx_keep_alive(self):
-        if self._readerwriter:
+        if self._readerwriter is not None:
             self._readerwriter.tx_bytes(struct.pack('B', 0))
 
     def tx_choke(self):
-        if self._readerwriter:
+        if self._readerwriter is not None:
             self._readerwriter.tx_bytes(struct.pack('>IB', 1, _MSG_CHOKE))
 
     def tx_unchoke(self):
-        if self._readerwriter:
+        if self._readerwriter is not None:
             self._readerwriter.tx_bytes(struct.pack('>IB', 1, _MSG_UNCHOKE))
 
     def tx_interested(self):
-        if self._readerwriter:
+        if self._readerwriter is not None:
             self._readerwriter.tx_bytes(struct.pack('>IB', 1, _MSG_INTERESTED))
 
     def tx_not_interested(self):
-        if self._readerwriter:
+        if self._readerwriter is not None:
             self._readerwriter.tx_bytes(struct.pack('>IB', 1,
                                                     _MSG_NOT_INTERESTED))
 
     def tx_have(self, index):
-        if self._readerwriter:
+        if self._readerwriter is not None:
             self._readerwriter.tx_bytes(struct.pack('>IBI', 5,
                                                     _MSG_HAVE, index))
 
     def tx_bitfield(self, bits):
-        if self._readerwriter:
+        if self._readerwriter is not None:
             bitfield = bits.tobytes()
             length = len(bitfield)
             self._readerwriter.tx_bytes(struct.pack('>IB{}s'.format(length),
@@ -216,22 +216,22 @@ class PeerWireTranslator(object):
                                                     bitfield))
 
     def tx_request(self, index, begin, length):
-        if self._readerwriter:
+        if self._readerwriter is not None:
             self._readerwriter.tx_bytes(struct.pack('>IB3I', 13, _MSG_REQUEST,
                                                     index, begin, length))
 
     def tx_piece(self, index, begin, block):
-        if self._readerwriter:
+        if self._readerwriter is not None:
             length = len(block)
             self._readerwriter.tx_bytes(struct.pack('>IB2I{}s'.format(length),
                                                     9+length, _MSG_PIECE,
                                                     index, begin, block))
 
     def tx_cancel(self, index, begin, length):
-        if self._readerwriter:
+        if self._readerwriter is not None:
             self._readerwriter.tx_bytes(struct.pack('>IB3I', 13, _MSG_CANCEL,
                                                     index, begin, length))
 
     def connection_lost(self):
-        if self._receiver:
+        if self._receiver is not None:
             self._receiver.connection_lost()

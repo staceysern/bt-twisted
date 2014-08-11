@@ -83,7 +83,7 @@ class Console(Cmd):
             print err.message
             return
 
-        if nickname:
+        if nickname != '':
             self.nicknames[nickname] = result['key']
 
         print "Adding {} (key: {})".format(filename, result['key'])

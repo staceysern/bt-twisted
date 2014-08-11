@@ -82,7 +82,7 @@ class FileMgr(object):
         offset_in_torrent = (piece_index * self._metainfo.piece_length +
                              offset_in_piece)
 
-        if not file_index:
+        if file_index is None:
             file_index = self._file_index(offset_in_torrent)
         fd, file_length, file_offset_in_torrent = self._files[file_index]
         offset_in_file = offset_in_torrent - file_offset_in_torrent

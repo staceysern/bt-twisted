@@ -36,7 +36,7 @@ class ProtocolAdapter(protocol.Protocol):
         self._receiver = None
 
     def dataReceived(self, data):
-        if self._receiver:
+        if self._receiver is not None:
             buf = buffer(data)
             offset = 0
             while offset < len(buf):
@@ -48,11 +48,11 @@ class ProtocolAdapter(protocol.Protocol):
                 self._receiver.rx_bytes(n)
 
     def connectionMade(self):
-        if self._receiver:
+        if self._receiver is not None:
             self._receiver.connection_complete(self)
 
     def connectionLost(self, reason):
-        if self._receiver:
+        if self._receiver is not None:
             self._receiver.connection_lost()
 
     def tx_bytes(self, bytestr):

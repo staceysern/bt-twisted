@@ -61,8 +61,8 @@ class PeerProxy(object):
         if len(peer_id) != 20:
             raise ValueError("Peer id must be 20 bytes long")
 
-        if not protocol:
-            if not info_hash or len(info_hash) != 20:
+        if protocol is None:
+            if info_hash is None or len(info_hash) != 20:
                 raise ValueError("Info hash must be a 20 byte value")
 
             self._translator = None
@@ -81,12 +81,12 @@ class PeerProxy(object):
         self._translator = HandshakeTranslator(self, self._protocol)
 
     def _drop_connection(self, notify_client=True):
-        if self._translator:
+        if self._translator is not None:
             self._translator.unset_receiver()
             self._translator.unset_readerwriter()
             self._translator = None
 
-        if self._protocol:
+        if self._protocol is not None:
             self._protocol.stop()
 
         self._state = self._States.Disconnected
